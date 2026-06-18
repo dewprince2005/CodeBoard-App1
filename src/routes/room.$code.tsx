@@ -8,6 +8,17 @@ import { cpp } from "@codemirror/lang-cpp";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, FolderClock } from "lucide-react";
 
 export const Route = createFileRoute("/room/$code")({
   component: RoomPage,
@@ -25,6 +36,7 @@ const langExt = (l: string) => {
 function RoomPage() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
+  const { user, signOut, loading: authLoading } = useAuth();
   const [value, setValue] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -228,6 +240,52 @@ function RoomPage() {
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save Session"}
           </button>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          {authLoading ? (
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="focus:outline-none cursor-pointer">
+                <Avatar className="w-8 h-8 border border-border hover:opacity-85 transition">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold uppercase text-xs">
+                    {user.email?.[0] ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 mt-1 backdrop-blur-md bg-card/90">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none text-foreground">My Account</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/history" className="flex w-full items-center gap-2 cursor-pointer">
+                    <FolderClock className="w-4 h-4" />
+                    <span>Saved Sessions</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={signOut}
+                  className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm border border-border bg-card text-foreground font-medium rounded-md px-3 py-1.5 hover:bg-accent transition"
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       </header>
 
