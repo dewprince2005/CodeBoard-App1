@@ -223,8 +223,17 @@ function Index() {
         </div>
       </main>
 
-      <footer className="text-center text-xs text-muted-foreground py-6 border-t border-border">
-        CodeBoard · Real-time collaborative coding
+      <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border text-xs text-muted-foreground bg-background/20">
+        <div>CodeBoard · Real-time collaborative coding</div>
+        <div className="flex gap-4">
+          <Link to="/history" className="hover:text-foreground transition underline-offset-4 hover:underline">
+            Saved Sessions
+          </Link>
+          <span>·</span>
+          <Link to="/contact" className="hover:text-foreground transition underline-offset-4 hover:underline">
+            Contact Support
+          </Link>
+        </div>
       </footer>
     </div>
   );

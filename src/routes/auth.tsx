@@ -28,6 +28,24 @@ function AuthPage() {
     }
   }, [user, authLoading, navigate]);
 
+  // Handle OAuth errors redirected back to the URL
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const queryParams = new URLSearchParams(window.location.search);
+    
+    const errorDescription = hashParams.get("error_description") || queryParams.get("error_description");
+    const error = hashParams.get("error") || queryParams.get("error");
+    
+    if (errorDescription || error) {
+      const message = errorDescription || error;
+      toast.error(decodeURIComponent(message!).replace(/\+/g, " "));
+      
+      // Clean up the URL parameters so the toast doesn't reappear on reload
+      const cleanUrl = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", cleanUrl);
+    }
+  }, []);
+
   const validateForm = () => {
     let valid = true;
     setEmailError("");
@@ -89,7 +107,7 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth`,
         },
       });
       if (error) throw error;
