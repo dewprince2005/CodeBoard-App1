@@ -7,6 +7,8 @@ import { java } from "@codemirror/lang-java";
 import { cpp } from "@codemirror/lang-cpp";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionView,
@@ -23,6 +25,7 @@ const langExt = (l: string) => {
 
 function SessionView() {
   const { id } = Route.useParams();
+  const { theme } = useTheme();
   const [data, setData] = useState<{ final_code: string; language: string; room_code: string; duration_sec: number; created_at: string } | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -50,14 +53,17 @@ function SessionView() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-border">
-        <Link to="/history" className="text-sm text-muted-foreground hover:text-foreground">← History</Link>
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link to="/history" className="text-sm text-muted-foreground hover:text-foreground">← History</Link>
+        </div>
         <div className="flex items-center gap-3 text-xs">
           {data && (
             <>
               <span className="font-mono tracking-widest">{data.room_code}</span>
-              <span className="px-2 py-1 rounded-md bg-secondary">{data.language}</span>
+              <span className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground">{data.language}</span>
               <span className="text-muted-foreground">{Math.floor(data.duration_sec / 60)}m {data.duration_sec % 60}s</span>
             </>
           )}
@@ -68,7 +74,7 @@ function SessionView() {
           <CodeMirror
             value={data.final_code}
             height="calc(100vh - 49px)"
-            theme={oneDark}
+            theme={theme === "dark" ? oneDark : "light"}
             extensions={[langExt(data.language)]}
             editable={false}
             basicSetup={{ lineNumbers: true, foldGutter: true }}

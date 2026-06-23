@@ -34,7 +34,32 @@
 
 :root {
   --radius: 0.625rem;
-  /* Dark theme by default — CodeBoard */
+  /* Light theme by default */
+  --background: oklch(0.98 0.005 240);
+  --foreground: oklch(0.15 0.02 240);
+  --card: oklch(0.99 0.005 240);
+  --card-foreground: oklch(0.15 0.02 240);
+  --popover: oklch(0.99 0.005 240);
+  --popover-foreground: oklch(0.15 0.02 240);
+  --primary: oklch(0.55 0.18 260);
+  --primary-foreground: oklch(0.99 0.005 260);
+  --secondary: oklch(0.94 0.01 240);
+  --secondary-foreground: oklch(0.15 0.02 240);
+  --muted: oklch(0.94 0.01 240);
+  --muted-foreground: oklch(0.5 0.02 240);
+  --accent: oklch(0.92 0.015 240);
+  --accent-foreground: oklch(0.15 0.02 240);
+  --destructive: oklch(0.6 0.18 25);
+  --destructive-foreground: oklch(0.98 0.005 240);
+  --border: oklch(0.88 0.01 240);
+  --input: oklch(0.94 0.01 240);
+  --ring: oklch(0.55 0.18 260);
+  --emerald: oklch(0.55 0.18 150);
+  --emerald-foreground: oklch(0.99 0.005 150);
+}
+
+.dark {
+  /* Dark theme — CodeBoard */
   --background: oklch(0.16 0.015 240);
   --foreground: oklch(0.97 0.005 240);
   --card: oklch(0.20 0.018 240);
@@ -66,5 +91,6 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 }

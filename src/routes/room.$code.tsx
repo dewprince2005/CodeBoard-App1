@@ -9,6 +9,9 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -37,6 +40,7 @@ function RoomPage() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
+  const { theme } = useTheme();
   const [value, setValue] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -148,9 +152,14 @@ function RoomPage() {
   };
 
   const copyCode = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.success("Room code copied to clipboard!");
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      toast.error("Failed to copy code to clipboard");
+    }
   };
 
   const saveSession = async () => {
@@ -167,7 +176,10 @@ function RoomPage() {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      toast.success("Session saved successfully!");
       setTimeout(() => setSaved(false), 2000);
+    } else {
+      toast.error(error.message || "Failed to save session.");
     }
   };
 
@@ -189,8 +201,8 @@ function RoomPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
@@ -211,6 +223,7 @@ function RoomPage() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+          <ThemeToggle />
           <select
             value={language}
             onChange={(e) => onLangChange(e.target.value)}
@@ -293,7 +306,7 @@ function RoomPage() {
         <CodeMirror
           value={value}
           height="calc(100vh - 57px)"
-          theme={oneDark}
+          theme={theme === "dark" ? oneDark : "light"}
           extensions={[langExt(language)]}
           onChange={onChange}
           basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true }}

@@ -13,6 +13,7 @@ import {
   Globe,
   BookOpen,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -102,10 +103,10 @@ function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col bg-[#030014] text-foreground overflow-hidden">
+    <div className="min-h-screen relative flex flex-col bg-background text-foreground overflow-hidden">
       {/* Premium ambient light effects */}
-      <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(124,58,237,0.15)_0%,transparent_75%)] rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-15%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(6,182,212,0.12)_0%,transparent_75%)] rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(124,58,237,0.08)_0%,transparent_75%)] dark:bg-[radial-gradient(circle,rgba(124,58,237,0.15)_0%,transparent_75%)] rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-15%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(6,182,212,0.06)_0%,transparent_75%)] dark:bg-[radial-gradient(circle,rgba(6,182,212,0.12)_0%,transparent_75%)] rounded-full blur-[140px] pointer-events-none" />
 
       {/* Grid lines background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f29370e_1px,transparent_1px),linear-gradient(to_bottom,#1f29370e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
@@ -120,6 +121,7 @@ function ContactPage() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link
             to="/"
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition"

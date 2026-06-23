@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, FolderClock } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,9 +52,12 @@ function Index() {
         .from("rooms")
         .insert({ room_code: code, language, code: "" });
       if (e) throw e;
+      toast.success("Room created successfully!");
       navigate({ to: "/room/$code", params: { code } });
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg);
+      toast.error(msg || "Failed to create room.");
       setCreating(false);
     }
   };
@@ -61,6 +66,7 @@ function Index() {
     const code = joinCode.trim().toUpperCase();
     if (code.length !== 8) {
       setError("Room code must be 8 characters.");
+      toast.error("Room code must be 8 characters.");
       return;
     }
     setJoining(true);
@@ -72,9 +78,11 @@ function Index() {
       .maybeSingle();
     if (e || !data) {
       setError("Room not found.");
+      toast.error("Room not found. Please verify the code.");
       setJoining(false);
       return;
     }
+    toast.success("Joining room...");
     navigate({ to: "/room/$code", params: { code } });
   };
 
@@ -93,6 +101,8 @@ function Index() {
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             Server Active
           </div>
+
+          <ThemeToggle />
 
           {authLoading ? (
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -175,9 +185,16 @@ function Index() {
               <button
                 onClick={createRoom}
                 disabled={creating}
-                className="mt-5 w-full bg-primary text-primary-foreground font-medium rounded-md py-2.5 hover:opacity-90 transition disabled:opacity-50"
+                className="mt-5 w-full bg-primary text-primary-foreground font-semibold rounded-md py-2.5 hover:opacity-95 transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-[0_2px_10px_rgba(52,211,153,0.15)]"
               >
-                {creating ? "Creating…" : "Create Room"}
+                {creating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    <span>Creating Room...</span>
+                  </>
+                ) : (
+                  "Create Room"
+                )}
               </button>
             </div>
 
@@ -201,9 +218,16 @@ function Index() {
               <button
                 onClick={joinRoom}
                 disabled={joining}
-                className="mt-5 w-full bg-secondary text-secondary-foreground font-medium rounded-md py-2.5 border border-border hover:bg-accent transition disabled:opacity-50"
+                className="mt-5 w-full bg-secondary text-secondary-foreground font-semibold rounded-md py-2.5 border border-border hover:bg-accent hover:text-accent-foreground transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
-                {joining ? "Joining…" : "Join Room"}
+                {joining ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span>Joining Room...</span>
+                  </>
+                ) : (
+                  "Join Room"
+                )}
               </button>
             </div>
           </div>

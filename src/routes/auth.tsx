@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, Mail, Github, Chrome, ArrowLeft } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -128,10 +129,10 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-[#030014] overflow-hidden px-4 md:px-6">
+    <div className="min-h-screen relative flex items-center justify-center bg-background overflow-hidden px-4 md:px-6">
       {/* Premium ambient light effects */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(124,58,237,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(6,182,212,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(124,58,237,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(circle,rgba(124,58,237,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(circle,rgba(6,182,212,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
       
       {/* Decorative floating grids */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
@@ -139,14 +140,17 @@ function AuthPage() {
       {/* Main card wrapper */}
       <div className="w-full max-w-[440px] z-10 transition-all duration-300">
         
-        {/* Back Link */}
-        <Link 
-          to="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition group"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span>Back to Home</span>
-        </Link>
+        {/* Top Actions */}
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span>Back to Home</span>
+          </Link>
+          <ThemeToggle />
+        </div>
 
         {/* Auth Card */}
         <div className="backdrop-blur-xl bg-card/40 border border-border/60 shadow-2xl rounded-2xl p-6 md:p-8 relative overflow-hidden">

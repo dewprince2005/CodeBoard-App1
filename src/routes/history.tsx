@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/history")({
   component: HistoryPage,
@@ -55,6 +56,7 @@ function HistoryPage() {
         </Link>
         
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
           <div className="h-4 w-px bg-border" />
           
