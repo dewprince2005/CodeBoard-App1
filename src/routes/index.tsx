@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, FolderClock } from "lucide-react";
+import { LogOut, FolderClock, LayoutDashboard, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +42,25 @@ function Index() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+    const fetchRole = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (!error && data) {
+        setUserRole(data.role);
+      }
+    };
+    fetchRole();
+  }, [user]);
 
   const createRoom = async () => {
     setCreating(true);
@@ -123,8 +142,23 @@ function Index() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="flex w-full items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                {(userRole === "admin" || userRole === "moderator") && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="flex w-full items-center gap-2 cursor-pointer text-primary">
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
                   <Link to="/tasks" className="flex w-full items-center gap-2 cursor-pointer">
-                    <FolderClock className="w-4 h-4" /> {/* Let's assume we can reuse an icon */}
+                    <FolderClock className="w-4 h-4" />
                     <span>Task Manager</span>
                   </Link>
                 </DropdownMenuItem>

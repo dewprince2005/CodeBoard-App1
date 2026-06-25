@@ -14,6 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          id: string
+          actor_id: string | null
+          actor_email: string | null
+          action: string
+          target_id: string | null
+          target_email: string | null
+          before_state: Json | null
+          after_state: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          actor_id?: string | null
+          actor_email?: string | null
+          action: string
+          target_id?: string | null
+          target_email?: string | null
+          before_state?: Json | null
+          after_state?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          actor_id?: string | null
+          actor_email?: string | null
+          action?: string
+          target_id?: string | null
+          target_email?: string | null
+          before_state?: Json | null
+          after_state?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          name: string | null
+          avatar_url: string | null
+          bio: string | null
+          location: string | null
+          role: string
+          is_banned: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          location?: string | null
+          role?: string
+          is_banned?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          location?: string | null
+          role?: string
+          is_banned?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           code: string
@@ -79,12 +170,54 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          is_completed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          is_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          is_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_user_banned: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
