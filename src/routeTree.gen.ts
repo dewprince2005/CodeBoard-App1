@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -16,6 +17,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 import { Route as RoomCodeRouteImport } from './routes/room.$code'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/history': typeof HistoryRoute
+  '/tasks': typeof TasksRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/history': typeof HistoryRoute
+  '/tasks': typeof TasksRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/history': typeof HistoryRoute
+  '/tasks': typeof TasksRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/history'
+    | '/tasks'
     | '/room/$code'
     | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/contact' | '/history' | '/room/$code' | '/session/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/contact'
+    | '/history'
+    | '/tasks'
+    | '/room/$code'
+    | '/session/$id'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/contact'
     | '/history'
+    | '/tasks'
     | '/room/$code'
     | '/session/$id'
   fileRoutesById: FileRoutesById
@@ -98,12 +116,20 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   HistoryRoute: typeof HistoryRoute
+  TasksRoute: typeof TasksRoute
   RoomCodeRoute: typeof RoomCodeRoute
   SessionIdRoute: typeof SessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   HistoryRoute: HistoryRoute,
+  TasksRoute: TasksRoute,
   RoomCodeRoute: RoomCodeRoute,
   SessionIdRoute: SessionIdRoute,
 }

@@ -122,7 +122,12 @@ function Index() {
                     <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/tasks" className="flex w-full items-center gap-2 cursor-pointer">
+                    <FolderClock className="w-4 h-4" /> {/* Let's assume we can reuse an icon */}
+                    <span>Task Manager</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/history" className="flex w-full items-center gap-2 cursor-pointer">
                     <FolderClock className="w-4 h-4" />
