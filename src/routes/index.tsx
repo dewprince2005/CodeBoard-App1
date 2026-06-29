@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, FolderClock, LayoutDashboard, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { logActivity } from "@/lib/activity-logger";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,6 +38,11 @@ function genCode() {
 function Index() {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
+  
+  const handleSignOut = async () => {
+    await logActivity({ action: "click:sign_out" });
+    await signOut();
+  };
   const [joinCode, setJoinCode] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [creating, setCreating] = useState(false);
@@ -71,6 +77,10 @@ function Index() {
         .from("rooms")
         .insert({ room_code: code, language, code: "" });
       if (e) throw e;
+      await logActivity({
+        action: "click:create_room",
+        after_state: { room_code: code, language },
+      });
       toast.success("Room created successfully!");
       navigate({ to: "/room/$code", params: { code } });
     } catch (e) {
@@ -101,6 +111,10 @@ function Index() {
       setJoining(false);
       return;
     }
+    await logActivity({
+      action: "click:join_room",
+      after_state: { room_code: code },
+    });
     toast.success("Joining room...");
     navigate({ to: "/room/$code", params: { code } });
   };
@@ -170,7 +184,7 @@ function Index() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />

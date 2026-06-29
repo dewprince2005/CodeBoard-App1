@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrashRouteImport } from './routes/trash'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 import { Route as RoomCodeRouteImport } from './routes/room.$code'
 
+const TrashRoute = TrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/tasks': typeof TasksRoute
+  '/trash': typeof TrashRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/tasks': typeof TasksRoute
+  '/trash': typeof TrashRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/tasks': typeof TasksRoute
+  '/trash': typeof TrashRoute
   '/room/$code': typeof RoomCodeRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/tasks'
+    | '/trash'
     | '/room/$code'
     | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/tasks'
+    | '/trash'
     | '/room/$code'
     | '/session/$id'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/tasks'
+    | '/trash'
     | '/room/$code'
     | '/session/$id'
   fileRoutesById: FileRoutesById
@@ -143,12 +155,20 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   HistoryRoute: typeof HistoryRoute
   TasksRoute: typeof TasksRoute
+  TrashRoute: typeof TrashRoute
   RoomCodeRoute: typeof RoomCodeRoute
   SessionIdRoute: typeof SessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trash': {
+      id: '/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof TrashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tasks': {
       id: '/tasks'
       path: '/tasks'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   HistoryRoute: HistoryRoute,
   TasksRoute: TasksRoute,
+  TrashRoute: TrashRoute,
   RoomCodeRoute: RoomCodeRoute,
   SessionIdRoute: SessionIdRoute,
 }

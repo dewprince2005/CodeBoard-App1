@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Trash2, CheckCircle, Circle, Plus, ListTodo } from "lucide-react";
+import { Trash2, CheckCircle, Circle, Plus, ListTodo, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Link } from "@tanstack/react-router";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, FolderClock } from "lucide-react";
+import { logActivity } from "@/lib/activity-logger";
 
 export const Route = createFileRoute("/tasks")({
   component: TaskManager,
@@ -26,11 +27,16 @@ type Task = {
   title: string;
   is_completed: boolean;
   created_at: string;
+  deleted_at: string | null;
 };
 
 function TaskManager() {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await logActivity({ action: "click:sign_out" });
+    await signOut();
+  };
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -50,6 +56,7 @@ function TaskManager() {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -82,6 +89,10 @@ function TaskManager() {
       return;
     }
     
+    await logActivity({
+      action: "click:add_task",
+      after_state: { task_id: data.id, title: tempTitle },
+    });
     setTasks([data, ...tasks]);
     toast.success("Task added");
   };
@@ -102,20 +113,33 @@ function TaskManager() {
       toast.error("Failed to update task");
       // Revert on error
       setTasks(tasks.map(t => t.id === task.id ? { ...t, is_completed: !newStatus } : t));
+    } else {
+      await logActivity({
+        action: "click:toggle_task",
+        after_state: { task_id: task.id, is_completed: newStatus },
+      });
     }
   };
 
-  // Delete Task with confirmation
+  // Soft Delete Task with confirmation
   const deleteTask = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
 
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       toast.error("Failed to delete task");
     } else {
+      await logActivity({
+        action: "click:delete_task",
+        after_state: { task_id: id },
+      });
+      // Optimistically remove from UI (soft‑deleted rows are filtered by RLS)
       setTasks(tasks.filter(t => t.id !== id));
-      toast.success("Task deleted");
+      toast.success("Task moved to trash");
     }
   };
 
@@ -140,6 +164,17 @@ function TaskManager() {
         </div>
         
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("toggle-command-menu"))}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/20 hover:bg-accent/60 text-muted-foreground hover:text-foreground transition text-xs font-medium cursor-pointer focus:outline-none"
+            title="Search and Commands"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Search...</span>
+            <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[9px] font-medium opacity-80">
+              <span>⌘</span>K
+            </kbd>
+          </button>
           <ThemeToggle />
 
           {user && (
@@ -171,9 +206,15 @@ function TaskManager() {
                     <span>Saved Sessions</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/trash" className="flex w-full items-center gap-2 cursor-pointer">
+                    <Trash2 className="w-4 h-4" />
+                    <span>Trash Bin</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />

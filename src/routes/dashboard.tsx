@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
+import { PermissionGate } from "@/components/permission-gate";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -26,8 +28,10 @@ import {
   ChevronLeft,
   MapPin,
   FileText,
+  Search,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { logActivity } from "@/lib/activity-logger";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   PieChart,
@@ -64,6 +68,7 @@ type Task = {
   is_completed: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
 type Profile = {
@@ -85,6 +90,58 @@ type ActivityItem = {
   type: "create" | "complete" | "delete";
 };
 
+const mapLogToActivity = (log: any): ActivityItem => {
+  let text = "";
+  let type: ActivityItem["type"] = "complete";
+
+  const action = log.action;
+  if (action === "click:create_room") {
+    text = `Created codeboard room ${log.after_state?.room_code || ""}`;
+    type = "create";
+  } else if (action === "click:join_room") {
+    text = `Joined codeboard room ${log.after_state?.room_code || ""}`;
+    type = "create";
+  } else if (action === "click:copy_room_code") {
+    text = `Copied room code ${log.after_state?.room_code || ""}`;
+    type = "complete";
+  } else if (action === "click:save_session") {
+    text = `Saved collaborative session for room ${log.after_state?.room_code || ""}`;
+    type = "complete";
+  } else if (action === "click:add_task") {
+    text = `Created task: "${log.after_state?.title || ""}"`;
+    type = "create";
+  } else if (action === "click:toggle_task") {
+    const isCompleted = log.after_state?.is_completed;
+    text = isCompleted ? `Completed task` : `Reopened task`;
+    type = isCompleted ? "complete" : "create";
+  } else if (action === "click:delete_task") {
+    text = `Moved task to trash`;
+    type = "delete";
+  } else if (action === "click:restore_task") {
+    text = `Restored task from trash`;
+    type = "create";
+  } else if (action === "click:purge_task") {
+    text = `Permanently deleted task`;
+    type = "delete";
+  } else if (action === "click:save_profile") {
+    text = `Updated profile information`;
+    type = "complete";
+  } else if (action === "change:room_language") {
+    text = `Changed room language to ${log.after_state?.language || ""}`;
+    type = "complete";
+  } else {
+    text = action.replace(/_/g, " ").replace(/:/g, " ");
+    type = action.includes("delete") || action.includes("purge") ? "delete" : "complete";
+  }
+
+  return {
+    id: log.id,
+    text,
+    time: log.created_at,
+    type,
+  };
+};
+
 /* ─────────────────── Helper ─────────────────── */
 
 function timeAgo(dateStr: string) {
@@ -104,6 +161,11 @@ const AREA_GRADIENT_ID = "taskAreaGradient";
 
 function UserDashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
+  const { can } = usePermissions();
+  const handleSignOut = async () => {
+    await logActivity({ action: "click:sign_out" });
+    await signOut();
+  };
   const navigate = useNavigate();
 
   // State
@@ -161,6 +223,7 @@ function UserDashboard() {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) {
         toast.error("Failed to load tasks");
@@ -170,6 +233,44 @@ function UserDashboard() {
       setLoading(false);
     };
     fetchTasks();
+  }, [user]);
+
+  // ─── Fetch activity feed from audit logs ───
+  useEffect(() => {
+    if (!user) return;
+    const fetchLogs = async () => {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .eq("actor_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!error && data) {
+        setActivityFeed(data.map(mapLogToActivity));
+      }
+    };
+    fetchLogs();
+  }, [user]);
+
+  // ─── Realtime subscription for audit logs ───
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel("dashboard-audit-logs")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "audit_logs", filter: `actor_id=eq.${user.id}` },
+        (payload) => {
+          const newLog = payload.new;
+          setActivityFeed((prev) => [mapLogToActivity(newLog), ...prev].slice(0, 20));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // ─── Realtime subscription ───
@@ -184,18 +285,28 @@ function UserDashboard() {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newTask = payload.new as unknown as Task;
-            setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
-            addActivity(`Task "${newTask.title}" created`, "create");
+            if (!newTask.deleted_at) {
+              setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
+            }
           } else if (payload.eventType === "UPDATE") {
             const updated = payload.new as unknown as Task;
-            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-            if (updated.is_completed) {
-              addActivity(`Task "${updated.title}" completed`, "complete");
+            if (updated.deleted_at) {
+              setTasks((prev) => prev.filter((t) => t.id !== updated.id));
+            } else {
+              setTasks((prev) => {
+                const exists = prev.some((t) => t.id === updated.id);
+                if (exists) {
+                  return prev.map((t) => (t.id === updated.id ? updated : t));
+                } else {
+                  return [updated, ...prev].sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  );
+                }
+              });
             }
           } else if (payload.eventType === "DELETE") {
             const old = payload.old as { id: string; title?: string };
             setTasks((prev) => prev.filter((t) => t.id !== old.id));
-            addActivity(`Task deleted`, "delete");
           }
         },
       )
@@ -205,13 +316,6 @@ function UserDashboard() {
       supabase.removeChannel(channel);
     };
   }, [user]);
-
-  const addActivity = useCallback((text: string, type: ActivityItem["type"]) => {
-    setActivityFeed((prev) => [
-      { id: crypto.randomUUID(), text, time: new Date().toISOString(), type },
-      ...prev.slice(0, 19),
-    ]);
-  }, []);
 
   // ─── CRUD operations ───
   const addTask = async (e: React.FormEvent) => {
@@ -231,7 +335,10 @@ function UserDashboard() {
       return;
     }
     setTasks((prev) => [data as unknown as Task, ...prev]);
-    addActivity(`Task "${tempTitle}" created`, "create");
+    await logActivity({
+      action: "click:add_task",
+      after_state: { task_id: data.id, title: tempTitle },
+    });
     toast.success("Task added");
   };
 
@@ -248,19 +355,28 @@ function UserDashboard() {
       toast.error("Failed to update task");
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t)));
     } else {
-      addActivity(`Task "${task.title}" ${newStatus ? "completed" : "reopened"}`, "complete");
+      await logActivity({
+        action: "click:toggle_task",
+        after_state: { task_id: task.id, is_completed: newStatus },
+      });
     }
   };
 
   const deleteTask = async (id: string) => {
     const task = tasks.find((t) => t.id === id);
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       toast.error("Failed to delete task");
     } else {
+      await logActivity({
+        action: "click:delete_task",
+        after_state: { task_id: id },
+      });
       setTasks((prev) => prev.filter((t) => t.id !== id));
-      addActivity(`Task "${task?.title || ""}" deleted`, "delete");
-      toast.success("Task deleted");
+      toast.success("Task moved to trash");
     }
   };
 
@@ -278,6 +394,10 @@ function UserDashboard() {
     if (error) {
       toast.error("Failed to update task title");
     } else {
+      await logActivity({
+        action: "click:save_edit_task",
+        after_state: { task_id: editingTaskId, title: editingTitle.trim() },
+      });
       setTasks((prev) =>
         prev.map((t) => (t.id === editingTaskId ? { ...t, title: editingTitle.trim() } : t)),
       );
@@ -303,6 +423,10 @@ function UserDashboard() {
     if (error) {
       toast.error("Failed to update profile");
     } else {
+      await logActivity({
+        action: "click:save_profile",
+        after_state: { name: profileForm.name.trim(), bio: profileForm.bio.trim(), location: profileForm.location.trim() },
+      });
       setProfile((prev) =>
         prev
           ? {
@@ -372,6 +496,7 @@ function UserDashboard() {
     { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" as const, active: true },
     { icon: ListTodo, label: "Tasks", to: "/tasks" as const },
     { icon: FolderClock, label: "Sessions", to: "/history" as const },
+    { icon: Trash2, label: "Trash Bin", to: "/trash" as const },
   ];
 
   return (
@@ -471,7 +596,7 @@ function UserDashboard() {
             )}
             {sidebarOpen && (
               <button
-                onClick={signOut}
+                onClick={handleSignOut}
                 className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
                 title="Sign out"
               >
@@ -504,6 +629,17 @@ function UserDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("toggle-command-menu"))}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/20 hover:bg-accent/60 text-muted-foreground hover:text-foreground transition text-xs font-medium cursor-pointer focus:outline-none"
+              title="Search and Commands"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Search...</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[9px] font-medium opacity-80">
+                <span>⌘</span>K
+              </kbd>
+            </button>
             <ThemeToggle />
           </div>
         </header>
@@ -572,71 +708,50 @@ function UserDashboard() {
           </div>
 
           {/* ── Charts Row ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-            {/* Area Chart — Task activity */}
-            <div className="lg:col-span-2 bg-card/60 backdrop-blur-sm border border-border rounded-xl p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold">Tasks Created (Last 7 Days)</h3>
+          <PermissionGate
+            permission="view_analytics"
+            fallback={
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div className="lg:col-span-2 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/50 bg-muted/10 p-10 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+                    <BarChart3 className="h-6 w-6 text-primary/50" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Analytics Locked</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Upgrade your role to view task analytics charts.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/50 bg-muted/10 p-10 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+                    <Activity className="h-6 w-6 text-primary/50" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Status Chart Locked</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Analytics require elevated permissions.</p>
+                  </div>
+                </div>
               </div>
-              <div className="h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={areaData}>
-                    <defs>
-                      <linearGradient id={AREA_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "rgba(30,30,40,0.95)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="tasks"
-                      stroke="#34d399"
-                      strokeWidth={2}
-                      fill={`url(#${AREA_GRADIENT_ID})`}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Pie Chart — Task status */}
-            <div className="bg-card/60 backdrop-blur-sm border border-border rounded-xl p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold">Task Status</h3>
-              </div>
-              <div className="h-[220px] flex items-center justify-center">
-                {tasks.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No tasks yet</p>
-                ) : (
+            }
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              {/* Area Chart — Task activity */}
+              <div className="lg:col-span-2 bg-card/60 backdrop-blur-sm border border-border rounded-xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Tasks Created (Last 7 Days)</h3>
+                </div>
+                <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={80}
-                        paddingAngle={4}
-                        dataKey="value"
-                        strokeWidth={0}
-                      >
-                        {pieData.map((_entry, i) => (
-                          <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
+                    <AreaChart data={areaData}>
+                      <defs>
+                        <linearGradient id={AREA_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip
                         contentStyle={{
                           background: "rgba(30,30,40,0.95)",
@@ -645,20 +760,67 @@ function UserDashboard() {
                           fontSize: "12px",
                         }}
                       />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={30}
-                        iconSize={8}
-                        formatter={(value: string) => (
-                          <span style={{ color: "#9ca3af", fontSize: "11px" }}>{value}</span>
-                        )}
+                      <Area
+                        type="monotone"
+                        dataKey="tasks"
+                        stroke="#34d399"
+                        strokeWidth={2}
+                        fill={`url(#${AREA_GRADIENT_ID})`}
                       />
-                    </PieChart>
+                    </AreaChart>
                   </ResponsiveContainer>
-                )}
+                </div>
+              </div>
+
+              {/* Pie Chart — Task status */}
+              <div className="bg-card/60 backdrop-blur-sm border border-border rounded-xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Task Status</h3>
+                </div>
+                <div className="h-[220px] flex items-center justify-center">
+                  {tasks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No tasks yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
+                          strokeWidth={0}
+                        >
+                          {pieData.map((_entry, i) => (
+                            <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: "rgba(30,30,40,0.95)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={30}
+                          iconSize={8}
+                          formatter={(value: string) => (
+                            <span style={{ color: "#9ca3af", fontSize: "11px" }}>{value}</span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </PermissionGate>
 
           {/* ── Tasks + Profile + Activity row ── */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

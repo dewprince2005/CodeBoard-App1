@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions, type Permission } from "@/hooks/use-permissions";
+import { PermissionGate } from "@/components/permission-gate";
 import { toast } from "sonner";
 import {
   Shield,
@@ -29,6 +31,10 @@ import {
   Undo2,
   ArrowUpDown,
   X,
+  History,
+  Lock,
+  Key,
+  Info,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -103,13 +109,73 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+interface ChangedField {
+  key: string;
+  before: any;
+  after: any;
+}
+
+function getChangedFields(before: any, after: any): ChangedField[] {
+  if (!before && !after) return [];
+  
+  if (!before) {
+    return Object.entries(after || {}).map(([key, val]) => ({
+      key,
+      before: undefined,
+      after: val,
+    }));
+  }
+  
+  if (!after) {
+    return Object.entries(before || {}).map(([key, val]) => ({
+      key,
+      before: val,
+      after: undefined,
+    }));
+  }
+
+  const changes: ChangedField[] = [];
+  const allKeys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+  
+  for (const key of allKeys) {
+    if (key === "updated_at" || key === "id" || key === "created_at") continue;
+    const beforeVal = before[key];
+    const afterVal = after[key];
+    if (JSON.stringify(beforeVal) !== JSON.stringify(afterVal)) {
+      changes.push({ key, before: beforeVal, after: afterVal });
+    }
+  }
+  return changes;
+}
+
 const ROLES = ["user", "moderator", "admin"] as const;
 const PAGE_SIZE = 10;
+
+/* ─────────────────── Permission matrix metadata ─────────────────── */
+
+const PERMISSION_META: Record<Permission, { label: string; description: string; category: string }> = {
+  view_dashboard:     { label: "View Dashboard",      description: "Access the personal dashboard page",               category: "General" },
+  view_tasks:         { label: "View Tasks",           description: "Access the tasks management page",                 category: "General" },
+  manage_own_tasks:   { label: "Manage Own Tasks",     description: "Create, edit, and delete own tasks",              category: "General" },
+  view_history:       { label: "View History",         description: "Access the sessions/history page",                category: "General" },
+  view_trash:         { label: "View Trash",           description: "Access the trash/soft-deleted items page",        category: "General" },
+  view_analytics:     { label: "View Analytics",      description: "View charts and analytics data",                  category: "Analytics" },
+  view_audit_logs:    { label: "View Audit Logs",      description: "Read the admin audit log trail",                  category: "Analytics" },
+  view_users:         { label: "View Users",           description: "See the user management table in admin",          category: "Admin" },
+  ban_users:          { label: "Ban/Unban Users",      description: "Toggle user banned status",                       category: "Admin" },
+  manage_all_tasks:   { label: "Manage All Tasks",     description: "Read and modify any user's tasks",                category: "Admin" },
+  access_admin_panel: { label: "Access Admin Panel",   description: "Navigate to the /admin route",                   category: "Admin" },
+  manage_roles:       { label: "Manage Roles",         description: "Change other users' roles",                       category: "Super Admin" },
+  manage_permissions: { label: "Manage Permissions",   description: "Edit the role permission matrix (this screen)",  category: "Super Admin" },
+};
+
+const PERMISSION_CATEGORIES = ["General", "Analytics", "Admin", "Super Admin"] as const;
 
 /* ─────────────────── Component ─────────────────── */
 
 function AdminDashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
+  const { allRolePermissions, updatePermission, can } = usePermissions();
   const navigate = useNavigate();
 
   // Current user's profile (for role check)
@@ -134,7 +200,29 @@ function AdminDashboard() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Admin panel active tab
-  const [activeTab, setActiveTab] = useState<"users" | "audit">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "audit" | "permissions">("users");
+  const [permSaving, setPermSaving] = useState<string | null>(null); // "role:permission" being saved
+
+  // Audit log controls
+  const [auditSearchQuery, setAuditSearchQuery] = useState("");
+  const [selectedTargetEmail, setSelectedTargetEmail] = useState<string | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter((log) => {
+      const q = auditSearchQuery.toLowerCase();
+      const matchesSearch = q === "" || 
+        log.action.toLowerCase().includes(q) ||
+        (log.actor_email || "").toLowerCase().includes(q) ||
+        (log.target_email || "").toLowerCase().includes(q);
+
+      const matchesTarget = !selectedTargetEmail || 
+        (log.target_email || "").toLowerCase() === selectedTargetEmail.toLowerCase() ||
+        (log.target_id || "").toLowerCase() === selectedTargetEmail.toLowerCase();
+
+      return matchesSearch && matchesTarget;
+    });
+  }, [auditLogs, auditSearchQuery, selectedTargetEmail]);
 
   // Undo queue for ban/unban
   const undoQueueRef = useRef<Map<string, BanUndo>>(new Map());
@@ -179,7 +267,11 @@ function AdminDashboard() {
       const [profilesRes, tasksRes, logsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("tasks").select("id, created_at, is_completed").order("created_at", { ascending: false }),
-        supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase
+          .from("audit_logs")
+          .select("*")
+          .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order("created_at", { ascending: false }),
       ]);
 
       if (profilesRes.data) setAllProfiles(profilesRes.data as unknown as Profile[]);
@@ -239,8 +331,8 @@ function AdminDashboard() {
       const { data } = await supabase
         .from("audit_logs")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false });
       if (data) setAuditLogs(data as unknown as AuditLog[]);
     },
     [user],
@@ -605,6 +697,17 @@ function AdminDashboard() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Live
             </div>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("toggle-command-menu"))}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/20 hover:bg-accent/60 text-muted-foreground hover:text-foreground transition text-xs font-medium cursor-pointer focus:outline-none"
+              title="Search and Commands"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Search...</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[9px] font-medium opacity-80">
+                <span>⌘</span>K
+              </kbd>
+            </button>
             <ThemeToggle />
           </div>
         </header>
@@ -738,7 +841,7 @@ function AdminDashboard() {
           </div>
 
           {/* ── Tab switcher ── */}
-          <div className="flex items-center gap-1 bg-card/60 border border-border rounded-lg p-1 mb-4 w-fit">
+          <div className="flex items-center gap-1 bg-card/60 border border-border rounded-lg p-1 mb-4 flex-wrap">
             <button
               onClick={() => setActiveTab("users")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
@@ -761,6 +864,19 @@ function AdminDashboard() {
               <FileText className="w-4 h-4" />
               Audit Logs
             </button>
+            {can("manage_permissions") && (
+              <button
+                onClick={() => setActiveTab("permissions")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                  activeTab === "permissions"
+                    ? "bg-violet-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Key className="w-4 h-4" />
+                Roles & Permissions
+              </button>
+            )}
           </div>
 
           {/* ── User Management Tab ── */}
@@ -871,29 +987,45 @@ function AdminDashboard() {
                             {p.email}
                           </td>
                           <td className="px-4 py-3">
-                            <select
-                              value={p.role}
-                              onChange={(e) => changeRole(p, e.target.value)}
-                              disabled={p.id === user?.id}
-                              className={`
-                                text-[11px] font-medium px-2 py-1 rounded-md border
-                                outline-none transition
-                                ${
-                                  p.role === "admin"
-                                    ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
-                                    : p.role === "moderator"
-                                      ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
-                                      : "bg-background/60 border-border text-muted-foreground"
-                                }
-                                ${p.id === user?.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                              `}
+                            <PermissionGate
+                              permission="manage_roles"
+                              fallback={
+                                <span className={`
+                                  text-[11px] font-medium px-2 py-1 rounded-md border
+                                  ${
+                                    p.role === "admin"
+                                      ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
+                                      : p.role === "moderator"
+                                        ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                        : "bg-background/60 border-border text-muted-foreground"
+                                  }
+                                `}>{p.role}</span>
+                              }
                             >
-                              {ROLES.map((r) => (
-                                <option key={r} value={r}>
-                                  {r}
-                                </option>
-                              ))}
-                            </select>
+                              <select
+                                value={p.role}
+                                onChange={(e) => changeRole(p, e.target.value)}
+                                disabled={p.id === user?.id}
+                                className={`
+                                  text-[11px] font-medium px-2 py-1 rounded-md border
+                                  outline-none transition
+                                  ${
+                                    p.role === "admin"
+                                      ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
+                                      : p.role === "moderator"
+                                        ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                        : "bg-background/60 border-border text-muted-foreground"
+                                  }
+                                  ${p.id === user?.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                                `}
+                              >
+                                {ROLES.map((r) => (
+                                  <option key={r} value={r}>
+                                    {r}
+                                  </option>
+                                ))}
+                              </select>
+                            </PermissionGate>
                           </td>
                           <td className="px-4 py-3">
                             <span
@@ -943,25 +1075,37 @@ function AdminDashboard() {
                                 </button>
                               )}
                               <button
-                                onClick={() => toggleBan(p)}
-                                disabled={p.id === user?.id}
-                                className={`
-                                  p-1.5 rounded-md text-xs transition flex items-center gap-1
-                                  ${p.id === user?.id ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
-                                  ${
-                                    p.is_banned
-                                      ? "text-emerald-400 hover:bg-emerald-500/10"
-                                      : "text-red-400 hover:bg-red-500/10"
-                                  }
-                                `}
-                                title={p.is_banned ? "Unban" : "Ban"}
+                                onClick={() => {
+                                  setSelectedTargetEmail(p.email);
+                                  setActiveTab("audit");
+                                }}
+                                className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent/60 transition flex items-center gap-1"
+                                title="View Audit Trail"
                               >
-                                {p.is_banned ? (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                ) : (
-                                  <Ban className="w-4 h-4" />
-                                )}
+                                <History className="w-4 h-4" />
                               </button>
+                              <PermissionGate permission="ban_users" silent>
+                                <button
+                                  onClick={() => toggleBan(p)}
+                                  disabled={p.id === user?.id}
+                                  className={`
+                                    p-1.5 rounded-md text-xs transition flex items-center gap-1
+                                    ${p.id === user?.id ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
+                                    ${
+                                      p.is_banned
+                                        ? "text-emerald-400 hover:bg-emerald-500/10"
+                                        : "text-red-400 hover:bg-red-500/10"
+                                    }
+                                  `}
+                                  title={p.is_banned ? "Unban" : "Ban"}
+                                >
+                                  {p.is_banned ? (
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  ) : (
+                                    <Ban className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </PermissionGate>
                             </div>
                           </td>
                         </tr>
@@ -1020,6 +1164,46 @@ function AdminDashboard() {
                 </span>
               </div>
 
+              {auditLogs.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        value={auditSearchQuery}
+                        onChange={(e) => setAuditSearchQuery(e.target.value)}
+                        placeholder="Search logs..."
+                        className="w-full bg-background/60 border border-border rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition"
+                      />
+                      {auditSearchQuery && (
+                        <button
+                          onClick={() => setAuditSearchQuery("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {selectedTargetEmail && (
+                      <div className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg px-2.5 py-1.5 text-xs font-medium">
+                        <span>Target: {selectedTargetEmail}</span>
+                        <button
+                          onClick={() => setSelectedTargetEmail(null)}
+                          className="p-0.5 text-primary hover:bg-primary/20 rounded-md transition"
+                          title="Clear target filter"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {filteredAuditLogs.length} result{filteredAuditLogs.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
+
               {auditLogs.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-border rounded-lg">
                   <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
@@ -1030,71 +1214,347 @@ function AdminDashboard() {
                     Actions like banning users or changing roles will appear here
                   </p>
                 </div>
+              ) : filteredAuditLogs.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-border rounded-lg">
+                  <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No matching audit events
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Try clearing the search or target filter to see more events
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                  {auditLogs.map((log) => {
+                  {filteredAuditLogs.map((log) => {
                     const isRole = log.action === "ROLE_CHANGE";
                     const isBan = log.action === "BAN_USER";
                     const isUnban = log.action === "UNBAN_USER";
+                    const isExpanded = expandedLogId === log.id;
+                    const changes = getChangedFields(log.before_state, log.after_state);
 
                     return (
                       <div
                         key={log.id}
-                        className="flex items-start gap-3 p-3 border border-border rounded-lg bg-background/40 hover:bg-accent/20 transition"
+                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                        className={`flex flex-col p-3 border border-border rounded-lg bg-background/40 hover:bg-accent/20 transition cursor-pointer select-none ${
+                          isExpanded ? "border-primary/45 bg-accent/10" : ""
+                        }`}
                       >
-                        <div
-                          className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isRole
-                              ? "bg-violet-500/15 text-violet-400"
-                              : isBan
-                                ? "bg-red-500/15 text-red-400"
-                                : isUnban
-                                  ? "bg-emerald-500/15 text-emerald-400"
-                                  : "bg-blue-500/15 text-blue-400"
-                          }`}
-                        >
-                          {isRole ? (
-                            <UserCog className="w-3.5 h-3.5" />
-                          ) : isBan ? (
-                            <Ban className="w-3.5 h-3.5" />
-                          ) : isUnban ? (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : (
-                            <Activity className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold">{log.action.replace(/_/g, " ")}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              by {log.actor_email || "system"}
-                            </span>
+                        <div className="flex items-start gap-3 w-full">
+                          <div
+                            className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              isRole
+                                ? "bg-violet-500/15 text-violet-400"
+                                : isBan
+                                  ? "bg-red-500/15 text-red-400"
+                                  : isUnban
+                                    ? "bg-emerald-500/15 text-emerald-400"
+                                    : "bg-blue-500/15 text-blue-400"
+                            }`}
+                          >
+                            {isRole ? (
+                              <UserCog className="w-3.5 h-3.5" />
+                            ) : isBan ? (
+                              <Ban className="w-3.5 h-3.5" />
+                            ) : isUnban ? (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            ) : (
+                              <Activity className="w-3.5 h-3.5" />
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Target: <span className="text-foreground/80">{log.target_email || log.target_id || "—"}</span>
-                          </p>
-                          {log.before_state && log.after_state && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded">
-                                {JSON.stringify(log.before_state)}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">→</span>
-                              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded">
-                                {JSON.stringify(log.after_state)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-semibold">{log.action.replace(/_/g, " ")}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                by {log.actor_email || "system"}
                               </span>
                             </div>
-                          )}
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            <Clock className="w-3 h-3 inline mr-0.5 -mt-px" />
-                            {timeAgo(log.created_at)}
-                          </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Target: <span className="text-foreground/80">{log.target_email || log.target_id || "—"}</span>
+                            </p>
+                            
+                            {/* Inline Change Description */}
+                            {changes.length > 0 ? (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px] text-muted-foreground">
+                                <span className="font-semibold text-foreground/70">Changes:</span>
+                                {changes.map((c) => (
+                                  <span key={c.key} className="bg-primary/5 border border-border/80 px-1.5 py-0.5 rounded text-[10px]">
+                                    {c.key} ({c.before !== undefined ? String(c.before) : "none"} → {c.after !== undefined ? String(c.after) : "none"})
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              log.before_state && log.after_state && (
+                                <div className="text-[11px] text-muted-foreground italic mt-0.5">
+                                  Metadata updated (no primary fields changed)
+                                </div>
+                              )
+                            )}
+
+                            <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-2">
+                              <span>
+                                <Clock className="w-3 h-3 inline mr-0.5 -mt-px" />
+                                {timeAgo(log.created_at)}
+                              </span>
+                              <span className="text-[9px] opacity-60">
+                                (Click to {isExpanded ? "collapse" : "view details"})
+                              </span>
+                            </p>
+                          </div>
                         </div>
+
+                        {/* Expanded state changes */}
+                        {isExpanded && changes.length > 0 && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-3 p-3 bg-card/90 border border-border/80 rounded-lg text-xs space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200"
+                          >
+                            <div className="grid grid-cols-3 gap-2 font-mono text-[10px] pb-1.5 border-b border-border/80 text-muted-foreground uppercase tracking-wider font-bold">
+                              <div>Property</div>
+                              <div>Before</div>
+                              <div>After</div>
+                            </div>
+                            <div className="divide-y divide-border/40 max-h-[250px] overflow-y-auto pr-1">
+                              {changes.map((change) => (
+                                <div key={change.key} className="grid grid-cols-3 gap-2 py-2 items-start font-mono text-[11px]">
+                                  <div className="font-semibold text-foreground/80 truncate pr-2 mt-0.5">{change.key}</div>
+                                  <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-1 rounded break-all whitespace-pre-wrap">
+                                    {change.before !== undefined ? (
+                                      typeof change.before === "object" ? JSON.stringify(change.before, null, 2) : String(change.before)
+                                    ) : (
+                                      <span className="opacity-40 italic">none</span>
+                                    )}
+                                  </div>
+                                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded break-all whitespace-pre-wrap">
+                                    {change.after !== undefined ? (
+                                      typeof change.after === "object" ? JSON.stringify(change.after, null, 2) : String(change.after)
+                                    ) : (
+                                      <span className="opacity-40 italic">none</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+          )}
+
+          {/* ── Roles & Permissions Tab ── */}
+          {activeTab === "permissions" && (
+            <PermissionGate permission="manage_permissions">
+              <div className="space-y-6">
+                {/* Header card */}
+                <div className="flex items-start gap-3 p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                  <div className="p-2 rounded-lg bg-violet-500/10">
+                    <Key className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">Role Permission Matrix</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Control which features each role can access. Changes take effect immediately via real-time sync.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-6 text-xs text-muted-foreground px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-md bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                      <span className="text-emerald-400 text-[10px]">✓</span>
+                    </div>
+                    <span>Permission granted</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-md bg-muted/30 border border-border/50" />
+                    <span>Permission denied</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Protected (cannot revoke)</span>
+                  </div>
+                </div>
+
+                {/* Permission matrix by category */}
+                {PERMISSION_CATEGORIES.map((category) => {
+                  const permsInCategory = (Object.keys(PERMISSION_META) as Permission[]).filter(
+                    (p) => PERMISSION_META[p].category === category,
+                  );
+
+                  return (
+                    <div key={category} className="bg-card/60 backdrop-blur-sm border border-border rounded-xl overflow-hidden">
+                      {/* Category header */}
+                      <div className={`px-5 py-3 border-b border-border/80 flex items-center gap-2
+                        ${
+                          category === "Super Admin"
+                            ? "bg-amber-500/5"
+                            : category === "Admin"
+                              ? "bg-violet-500/5"
+                              : category === "Analytics"
+                                ? "bg-blue-500/5"
+                                : "bg-muted/20"
+                        }
+                      `}>
+                        <span className={`text-xs font-bold uppercase tracking-widest
+                          ${
+                            category === "Super Admin"
+                              ? "text-amber-400"
+                              : category === "Admin"
+                                ? "text-violet-400"
+                                : category === "Analytics"
+                                  ? "text-blue-400"
+                                  : "text-muted-foreground"
+                          }
+                        `}>{category}</span>
+                      </div>
+
+                      {/* Role column headers */}
+                      <div className="grid grid-cols-[1fr_100px_100px_100px] gap-0 border-b border-border/60">
+                        <div className="px-5 py-2.5 text-xs font-medium text-muted-foreground">Permission</div>
+                        {ROLES.map((role) => (
+                          <div key={role} className="px-2 py-2.5 text-center text-xs font-semibold"
+                            style={{
+                              color: role === "admin" ? "#a78bfa" : role === "moderator" ? "#60a5fa" : "#9ca3af",
+                            }}
+                          >
+                            {role.charAt(0).toUpperCase() + role.slice(1)}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Permission rows */}
+                      {permsInCategory.map((perm, idx) => {
+                        const meta = PERMISSION_META[perm];
+                        const isProtected =
+                          perm === "manage_permissions" // always admin-only
+                          || perm === "view_dashboard"
+                          || perm === "view_tasks"
+                          || perm === "manage_own_tasks";
+
+                        return (
+                          <div
+                            key={perm}
+                            className={`grid grid-cols-[1fr_100px_100px_100px] gap-0 items-center
+                              ${idx % 2 === 0 ? "bg-background/20" : ""}
+                              hover:bg-accent/10 transition-colors group
+                            `}
+                          >
+                            <div className="px-5 py-3.5">
+                              <div className="flex items-start gap-2">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium text-foreground">{meta.label}</span>
+                                    {isProtected && (
+                                      <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{meta.description}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {ROLES.map((role) => {
+                              const row = allRolePermissions.find(
+                                (rp) => rp.role === role && rp.permission === perm,
+                              );
+                              const isGranted = row?.granted ?? false;
+                              const saveKey = `${role}:${perm}`;
+                              const isSaving = permSaving === saveKey;
+
+                              // Admins always have all permissions (locked on)
+                              const isLockedOn = role === "admin" && perm === "manage_permissions";
+                              // Some base permissions are locked for all roles
+                              const isLockedForRole =
+                                isProtected &&
+                                (perm === "view_dashboard" || perm === "view_tasks" || perm === "manage_own_tasks");
+
+                              const locked = isLockedOn || isLockedForRole;
+
+                              return (
+                                <div key={role} className="flex items-center justify-center px-2 py-3.5">
+                                  <button
+                                    id={`perm-toggle-${role}-${perm}`}
+                                    disabled={locked || isSaving}
+                                    onClick={async () => {
+                                      if (locked) return;
+                                      setPermSaving(saveKey);
+                                      try {
+                                        await updatePermission(role, perm, !isGranted);
+                                        toast.success(
+                                          `${meta.label} ${!isGranted ? "granted to" : "revoked from"} ${role}`,
+                                        );
+                                      } catch (err: any) {
+                                        toast.error(err.message || "Failed to update permission");
+                                      } finally {
+                                        setPermSaving(null);
+                                      }
+                                    }}
+                                    className={`
+                                      relative w-10 h-5 rounded-full border-2 transition-all duration-200 shrink-0
+                                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background
+                                      ${isSaving ? "opacity-50 cursor-wait" : locked ? "cursor-not-allowed" : "cursor-pointer"}
+                                      ${
+                                        isGranted
+                                          ? locked
+                                            ? "bg-amber-500/30 border-amber-500/50 focus:ring-amber-500/30"
+                                            : "bg-emerald-500 border-emerald-500 focus:ring-emerald-500/30"
+                                          : "bg-muted/40 border-border focus:ring-primary/30"
+                                      }
+                                    `}
+                                    title={
+                                      locked
+                                        ? "This permission is protected and cannot be changed"
+                                        : isGranted
+                                          ? `Revoke ${meta.label} from ${role}`
+                                          : `Grant ${meta.label} to ${role}`
+                                    }
+                                    aria-label={`Toggle ${perm} for ${role}`}
+                                    aria-pressed={isGranted}
+                                  >
+                                    <span
+                                      className={`
+                                        absolute top-0.5 w-3.5 h-3.5 rounded-full shadow-sm
+                                        transition-all duration-200
+                                        ${
+                                          isGranted
+                                            ? locked
+                                              ? "left-[18px] bg-amber-400"
+                                              : "left-[18px] bg-white"
+                                            : "left-0.5 bg-muted-foreground/50"
+                                        }
+                                      `}
+                                    />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {/* Info footer */}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 text-xs text-muted-foreground">
+                  <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <span>
+                    Permission changes propagate instantly via real-time sync. Users already logged in will see changes
+                    on their next page navigation or within a few seconds via Supabase Realtime.
+                  </span>
+                </div>
+              </div>
+            </PermissionGate>
           )}
         </div>
       </main>

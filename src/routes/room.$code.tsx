@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -21,7 +21,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, FolderClock } from "lucide-react";
+import { LogOut, FolderClock, Clock } from "lucide-react";
+import { logActivity } from "@/lib/activity-logger";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/room/$code")({
   component: RoomPage,
@@ -36,10 +47,27 @@ const langExt = (l: string) => {
   }
 };
 
+const formatTime = (totalSeconds: number): string => {
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  
+  const pad = (n: number) => String(n).padStart(2, "0");
+  
+  if (hrs > 0) {
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  }
+  return `${pad(mins)}:${pad(secs)}`;
+};
+
 function RoomPage() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
+  const handleSignOut = async () => {
+    await logActivity({ action: "click:sign_out" });
+    await signOut();
+  };
   const { theme } = useTheme();
   const [value, setValue] = useState("");
   const [language, setLanguage] = useState("javascript");
@@ -50,10 +78,52 @@ function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  // Ref used to bypass the blocker when the user explicitly confirms quit
+  const allowNavRef = useRef(false);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const startedAt = useRef<number>(Date.now());
   const remoteApply = useRef(false);
+  const roomCreatedAtRef = useRef<string | null>(null);
+
+  // Session Timer (persisted from room creation date)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (roomCreatedAtRef.current) {
+        const createdMs = new Date(roomCreatedAtRef.current).getTime();
+        setElapsedSeconds(Math.max(0, Math.floor((Date.now() - createdMs) / 1000)));
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Browser Reload / Close protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Unsaved collaborative progress will be lost.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // TanStack Router transition blocker
+  // blockerFn returning true = block navigation, false = allow it
+  const blocker = useBlocker({
+    blockerFn: () => !allowNavRef.current,
+    condition: true,
+  });
+
+  // When the blocker fires, open our custom dialog
+  useEffect(() => {
+    if (blocker.status === "blocked") {
+      setShowQuitConfirm(true);
+    }
+  }, [blocker.status]);
+
   const clientId = useMemo(() => Math.random().toString(36).slice(2), []);
   const lastSent = useRef(0);
   const pendingSave = useRef<NodeJS.Timeout | null>(null);
@@ -64,7 +134,7 @@ function RoomPage() {
     (async () => {
       const { data, error } = await supabase
         .from("rooms")
-        .select("id, code, language")
+        .select("id, code, language, created_at")
         .eq("room_code", code)
         .maybeSingle();
       if (cancelled) return;
@@ -74,6 +144,7 @@ function RoomPage() {
       }
       setRoomId(data.id);
       setLanguage(data.language);
+      roomCreatedAtRef.current = data.created_at;
       remoteApply.current = true;
       setValue(data.code ?? "");
       setTimeout(() => (remoteApply.current = false), 0);
@@ -141,9 +212,13 @@ function RoomPage() {
     }
   };
 
-  const onLangChange = (l: string) => {
+  const onLangChange = async (l: string) => {
     setLanguage(l);
     supabase.from("rooms").update({ language: l }).eq("room_code", code);
+    await logActivity({
+      action: "change:room_language",
+      after_state: { room_code: code, language: l },
+    });
     channelRef.current?.send({
       type: "broadcast",
       event: "code",
@@ -155,6 +230,10 @@ function RoomPage() {
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
+      await logActivity({
+        action: "click:copy_room_code",
+        after_state: { room_code: code },
+      });
       toast.success("Room code copied to clipboard!");
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
@@ -176,6 +255,10 @@ function RoomPage() {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      await logActivity({
+        action: "click:save_session",
+        after_state: { room_code: code, language, duration_sec: duration },
+      });
       toast.success("Session saved successfully!");
       setTimeout(() => setSaved(false), 2000);
     } else {
@@ -190,7 +273,10 @@ function RoomPage() {
           <h1 className="text-2xl font-semibold">Room not found</h1>
           <p className="text-muted-foreground mt-2">The room code <span className="font-mono">{code}</span> doesn't exist.</p>
           <button
-            onClick={() => navigate({ to: "/" })}
+            onClick={async () => {
+              await logActivity({ action: "click:go_home_room_not_found" });
+              navigate({ to: "/" });
+            }}
             className="mt-5 px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium"
           >
             Go home
@@ -246,12 +332,24 @@ function RoomPage() {
             <span className="text-muted-foreground">· {participants}/2</span>
           </div>
 
+          <div className="flex items-center gap-1.5 text-xs bg-card border border-border rounded-full px-3 py-1.5 text-muted-foreground font-mono">
+            <Clock className="w-3.5 h-3.5 text-primary animate-pulse" />
+            <span>{formatTime(elapsedSeconds)}</span>
+          </div>
+
           <button
             onClick={saveSession}
             disabled={saving}
-            className="text-sm bg-primary text-primary-foreground font-medium rounded-md px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
+            className="text-sm bg-primary text-primary-foreground font-medium rounded-md px-3 py-1.5 hover:opacity-90 disabled:opacity-50 transition shadow-sm"
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save Session"}
+          </button>
+
+          <button
+            onClick={() => setShowQuitConfirm(true)}
+            className="text-sm border border-destructive/20 hover:bg-destructive/10 text-destructive font-medium rounded-md px-3 py-1.5 transition cursor-pointer"
+          >
+            Quit Room
           </button>
 
           <div className="h-5 w-px bg-border mx-1" />
@@ -283,7 +381,7 @@ function RoomPage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
@@ -312,6 +410,56 @@ function RoomPage() {
           basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true }}
         />
       </div>
+
+      {/* Quit confirmation modal — triggered by header button OR useBlocker */}
+      <AlertDialog
+        open={showQuitConfirm}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && blocker.status === "blocked") {
+            blocker.reset();
+          }
+          setShowQuitConfirm(isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quit Collaboration Room?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to quit this collaborative room? Unsaved progress on this coding session will not be saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (blocker.status === "blocked") {
+                  blocker.reset();
+                }
+                setShowQuitConfirm(false);
+              }}
+            >
+              Stay in Room
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await logActivity({
+                  action: "click:quit_room",
+                  after_state: { room_code: code },
+                });
+                allowNavRef.current = true;
+                setShowQuitConfirm(false);
+                if (blocker.status === "blocked") {
+                  blocker.proceed();
+                } else {
+                  navigate({ to: "/" });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Quit Room
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

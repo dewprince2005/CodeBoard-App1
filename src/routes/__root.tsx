@@ -11,10 +11,12 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
+import { PermissionProvider } from "@/hooks/use-permissions";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SupportModal } from "@/components/support-modal";
+import { CommandMenu } from "@/components/command-menu";
 
 function NotFoundComponent() {
   return (
@@ -127,12 +129,15 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <SupportModal />
-          <Toaster closeButton richColors />
-        </ThemeProvider>
+        <PermissionProvider>
+          <ThemeProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <SupportModal />
+            <CommandMenu />
+            <Toaster closeButton richColors />
+          </ThemeProvider>
+        </PermissionProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
