@@ -13,7 +13,9 @@ export type ActivityLogPayload = {
  */
 export const logActivity = async (payload: ActivityLogPayload) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     await supabase.from("audit_logs").insert({
@@ -22,8 +24,8 @@ export const logActivity = async (payload: ActivityLogPayload) => {
       action: payload.action,
       target_id: payload.target_id || null,
       target_email: payload.target_email || null,
-      before_state: payload.before_state as any || null,
-      after_state: payload.after_state as any || null,
+      before_state: (payload.before_state as any) || null,
+      after_state: (payload.after_state as any) || null,
     });
   } catch (error) {
     console.error("Failed to log activity:", error);

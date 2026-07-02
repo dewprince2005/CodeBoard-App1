@@ -20,7 +20,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "CodeBoard — Real-time collaborative coding" },
-      { name: "description", content: "Share a room code and pair-code in real time. No signup required." },
+      {
+        name: "description",
+        content: "Share a room code and pair-code in real time. No signup required.",
+      },
       { property: "og:title", content: "CodeBoard" },
       { property: "og:description", content: "Real-time collaborative coding rooms." },
     ],
@@ -38,7 +41,7 @@ function genCode() {
 function Index() {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
-  
+
   const handleSignOut = async () => {
     await logActivity({ action: "click:sign_out" });
     await signOut();
@@ -128,7 +131,7 @@ function Index() {
           </div>
           <span className="font-semibold text-lg tracking-tight">CodeBoard</span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground px-3 py-1.5 rounded-full bg-card border border-border">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -152,7 +155,9 @@ function Index() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none text-foreground">My Account</p>
-                    <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
+                      {user.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuItem asChild>
@@ -163,7 +168,10 @@ function Index() {
                 </DropdownMenuItem>
                 {(userRole === "admin" || userRole === "moderator") && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin" className="flex w-full items-center gap-2 cursor-pointer text-primary">
+                    <Link
+                      to="/admin"
+                      className="flex w-full items-center gap-2 cursor-pointer text-primary"
+                    >
                       <Shield className="w-4 h-4" />
                       <span>Admin Panel</span>
                     </Link>
@@ -183,7 +191,7 @@ function Index() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
@@ -210,8 +218,8 @@ function Index() {
               Pair-code in <span className="text-primary">real time</span>.
             </h1>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-              Create a room, share the 8-character code, and start coding together.
-              No accounts, no setup.
+              Create a room, share the 8-character code, and start coding together. No accounts, no
+              setup.
             </p>
           </div>
 
@@ -254,9 +262,7 @@ function Index() {
             {/* Join */}
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-lg font-semibold">Join a room</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Enter the 8-character room code.
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">Enter the 8-character room code.</p>
               <label className="block text-xs font-medium text-muted-foreground mt-5 mb-2">
                 Room code
               </label>
@@ -285,9 +291,7 @@ function Index() {
             </div>
           </div>
 
-          {error && (
-            <div className="mt-5 text-sm text-destructive text-center">{error}</div>
-          )}
+          {error && <div className="mt-5 text-sm text-destructive text-center">{error}</div>}
 
           <div className="mt-10 text-center">
             <a
@@ -303,11 +307,17 @@ function Index() {
       <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border text-xs text-muted-foreground bg-background/20">
         <div>CodeBoard · Real-time collaborative coding</div>
         <div className="flex gap-4">
-          <Link to="/history" className="hover:text-foreground transition underline-offset-4 hover:underline">
+          <Link
+            to="/history"
+            className="hover:text-foreground transition underline-offset-4 hover:underline"
+          >
             Saved Sessions
           </Link>
           <span>·</span>
-          <Link to="/contact" className="hover:text-foreground transition underline-offset-4 hover:underline">
+          <Link
+            to="/contact"
+            className="hover:text-foreground transition underline-offset-4 hover:underline"
+          >
             Contact Support
           </Link>
         </div>

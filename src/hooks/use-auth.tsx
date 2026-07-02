@@ -51,11 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Fetch the profile row for a given user id */
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
     if (data) setProfile(data as unknown as UserProfile);
   };
 

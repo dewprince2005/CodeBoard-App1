@@ -53,7 +53,7 @@ export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   // Data lists
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -99,7 +99,7 @@ export function CommandMenu() {
           .select("role")
           .eq("id", user.id)
           .single();
-        
+
         const role = profile?.role || "user";
         setMyRole(role);
 
@@ -120,9 +120,10 @@ export function CommandMenu() {
           .limit(20);
 
         // 4. Fetch Profiles if admin/moderator
-        const profilesQuery = (role === "admin" || role === "moderator")
-          ? supabase.from("profiles").select("id, email, role").limit(20)
-          : Promise.resolve({ data: [] });
+        const profilesQuery =
+          role === "admin" || role === "moderator"
+            ? supabase.from("profiles").select("id, email, role").limit(20)
+            : Promise.resolve({ data: [] });
 
         const [tasksRes, sessionsRes, profilesRes] = await Promise.all([
           tasksQuery,
@@ -151,11 +152,9 @@ export function CommandMenu() {
 
   const handleToggleTask = async (task: Task) => {
     const newStatus = !task.is_completed;
-    
+
     // Optimistic UI update
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, is_completed: newStatus } : t))
-    );
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, is_completed: newStatus } : t)));
 
     const { error } = await supabase
       .from("tasks")
@@ -166,7 +165,7 @@ export function CommandMenu() {
       toast.error("Failed to update task");
       // Revert
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t))
+        prev.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t)),
       );
     } else {
       await logActivity({
@@ -290,7 +289,10 @@ export function CommandMenu() {
             <span>Toggle theme ({theme === "dark" ? "Light" : "Dark"})</span>
           </CommandItem>
           {user && (
-            <CommandItem onSelect={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
+            <CommandItem
+              onSelect={handleSignOut}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               <span>Sign Out</span>
             </CommandItem>
@@ -313,7 +315,13 @@ export function CommandMenu() {
                     ) : (
                       <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     )}
-                    <span className={task.is_completed ? "line-through text-muted-foreground truncate" : "truncate"}>
+                    <span
+                      className={
+                        task.is_completed
+                          ? "line-through text-muted-foreground truncate"
+                          : "truncate"
+                      }
+                    >
                       {task.title}
                     </span>
                   </div>
@@ -356,13 +364,15 @@ export function CommandMenu() {
                 >
                   <User className="w-4 h-4 mr-2 text-violet-400" />
                   <span className="truncate">{profile.email}</span>
-                  <span className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${
-                    profile.role === "admin"
-                      ? "bg-violet-500/10 text-violet-400"
-                      : profile.role === "moderator"
-                        ? "bg-blue-500/10 text-blue-400"
-                        : "bg-muted text-muted-foreground"
-                  }`}>
+                  <span
+                    className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${
+                      profile.role === "admin"
+                        ? "bg-violet-500/10 text-violet-400"
+                        : profile.role === "moderator"
+                          ? "bg-blue-500/10 text-blue-400"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
                     {profile.role}
                   </span>
                 </CommandItem>

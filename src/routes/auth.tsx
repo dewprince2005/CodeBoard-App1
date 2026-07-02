@@ -33,14 +33,15 @@ function AuthPage() {
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const queryParams = new URLSearchParams(window.location.search);
-    
-    const errorDescription = hashParams.get("error_description") || queryParams.get("error_description");
+
+    const errorDescription =
+      hashParams.get("error_description") || queryParams.get("error_description");
     const error = hashParams.get("error") || queryParams.get("error");
-    
+
     if (errorDescription || error) {
       const message = errorDescription || error;
       toast.error(decodeURIComponent(message!).replace(/\+/g, " "));
-      
+
       // Clean up the URL parameters so the toast doesn't reappear on reload
       const cleanUrl = window.location.pathname + window.location.search;
       window.history.replaceState(null, "", cleanUrl);
@@ -144,16 +145,15 @@ function AuthPage() {
       {/* Premium ambient light effects */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(124,58,237,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(circle,rgba(124,58,237,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(circle,rgba(6,182,212,0.15)_0%,transparent_70%)] rounded-full blur-[120px] pointer-events-none" />
-      
+
       {/* Decorative floating grids */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
       {/* Main card wrapper */}
       <div className="w-full max-w-[440px] z-10 transition-all duration-300">
-        
         {/* Top Actions */}
         <div className="flex items-center justify-between mb-6">
-          <Link 
+          <Link
             to="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition group"
           >
@@ -165,7 +165,6 @@ function AuthPage() {
 
         {/* Auth Card */}
         <div className="backdrop-blur-xl bg-card/40 border border-border/60 shadow-2xl rounded-2xl p-6 md:p-8 relative overflow-hidden">
-          
           {/* Card Top Border Light */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
@@ -238,7 +237,6 @@ function AuthPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
             {/* Email Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-300">Email Address</label>
@@ -255,7 +253,9 @@ function AuthPage() {
                   }}
                   placeholder="you@example.com"
                   className={`w-full bg-black/40 border ${
-                    emailError ? "border-destructive/80 focus:ring-destructive/30" : "border-border/60 focus:border-primary/80 focus:ring-primary/20"
+                    emailError
+                      ? "border-destructive/80 focus:ring-destructive/30"
+                      : "border-border/60 focus:border-primary/80 focus:ring-primary/20"
                   } rounded-lg pl-10 pr-4 py-2.5 text-sm text-foreground outline-none transition-all focus:ring-2`}
                   disabled={loading}
                 />
@@ -273,7 +273,11 @@ function AuthPage() {
                   {activeTab === "signin" && (
                     <button
                       type="button"
-                      onClick={() => toast.info("Password reset link will be sent to your email (needs SMTP config)")}
+                      onClick={() =>
+                        toast.info(
+                          "Password reset link will be sent to your email (needs SMTP config)",
+                        )
+                      }
                       className="text-[11px] text-primary hover:underline"
                     >
                       Forgot password?
@@ -293,7 +297,9 @@ function AuthPage() {
                     }}
                     placeholder="••••••••"
                     className={`w-full bg-black/40 border ${
-                      passwordError ? "border-destructive/80 focus:ring-destructive/30" : "border-border/60 focus:border-primary/80 focus:ring-primary/20"
+                      passwordError
+                        ? "border-destructive/80 focus:ring-destructive/30"
+                        : "border-border/60 focus:border-primary/80 focus:ring-primary/20"
                     } rounded-lg pl-10 pr-10 py-2.5 text-sm text-foreground outline-none transition-all focus:ring-2`}
                     disabled={loading}
                   />
@@ -358,7 +364,6 @@ function AuthPage() {
               <span>Google</span>
             </button>
           </div>
-
         </div>
       </div>
     </div>

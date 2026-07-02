@@ -14,6 +14,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -21,14 +22,12 @@ export const Route = createFileRoute("/contact")({
       { title: "Contact CodeBoard — Get in Touch" },
       {
         name: "description",
-        content:
-          "Have questions, suggestions, or feedback about CodeBoard? Reach out to our team.",
+        content: "Have questions, suggestions, or feedback about CodeBoard? Reach out to our team.",
       },
       { property: "og:title", content: "Contact CodeBoard" },
       {
         property: "og:description",
-        content:
-          "Have questions, suggestions, or feedback about CodeBoard? Reach out to our team.",
+        content: "Have questions, suggestions, or feedback about CodeBoard? Reach out to our team.",
       },
     ],
   }),
@@ -42,6 +41,7 @@ function ContactPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
 
   const [errors, setErrors] = useState<{
     name?: string;
@@ -55,18 +55,24 @@ function ContactPage() {
       tempErrors.name = "Name is required";
     } else if (name.trim().length < 2) {
       tempErrors.name = "Name must be at least 2 characters";
+    } else if (name.trim().length > 100) {
+      tempErrors.name = "Name must be under 100 characters";
     }
 
     if (!email) {
       tempErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       tempErrors.email = "Please enter a valid email address";
+    } else if (email.length > 254) {
+      tempErrors.email = "Email address is too long (maximum 254 characters)";
     }
 
     if (!message.trim()) {
       tempErrors.message = "Message is required";
     } else if (message.trim().length < 10) {
       tempErrors.message = "Message must be at least 10 characters";
+    } else if (message.length > 5000) {
+      tempErrors.message = "Message is too long (maximum 5000 characters)";
     }
 
     setErrors(tempErrors);
@@ -82,8 +88,24 @@ function ContactPage() {
 
     setLoading(true);
     try {
-      // Simulate API latency for a premium feeling loading state
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Honeypot check for spam protection (Page 5 checklist)
+      if (honeypot) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        toast.success("Thank you! Your message has been sent successfully.");
+        setSubmitted(true);
+        return;
+      }
+
+      // Store: save to Supabase table for record-keeping (Page 5 checklist)
+      const { error } = await supabase.from("contact_messages").insert({
+        name,
+        email,
+        subject,
+        message,
+      });
+
+      if (error) throw error;
+
       toast.success("Thank you! Your message has been sent successfully.");
       setSubmitted(true);
     } catch (err: any) {
@@ -98,6 +120,7 @@ function ContactPage() {
     setEmail("");
     setSubject("feedback");
     setMessage("");
+    setHoneypot("");
     setErrors({});
     setSubmitted(false);
   };
@@ -140,8 +163,8 @@ function ContactPage() {
             Get in <span className="text-primary">Touch</span>
           </h1>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto text-sm md:text-base leading-relaxed">
-            Have feedback, feature requests, or questions about CodeBoard? Let us
-            know how we can improve your real-time collaborative coding experience.
+            Have feedback, feature requests, or questions about CodeBoard? Let us know how we can
+            improve your real-time collaborative coding experience.
           </p>
         </div>
 
@@ -159,9 +182,7 @@ function ContactPage() {
                   System Status
                 </span>
               </div>
-              <h3 className="text-lg font-bold mt-2 text-foreground">
-                All Systems Operational
-              </h3>
+              <h3 className="text-lg font-bold mt-2 text-foreground">All Systems Operational</h3>
               <p className="text-xs text-muted-foreground mt-1">
                 Collaborative coding servers are currently active with 99.9% uptime.
               </p>
@@ -178,9 +199,7 @@ function ContactPage() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs text-muted-foreground font-medium">
-                    Support Email
-                  </h4>
+                  <h4 className="text-xs text-muted-foreground font-medium">Support Email</h4>
                   <p className="text-sm font-semibold text-foreground mt-0.5">
                     support@codeboard.dev
                   </p>
@@ -195,9 +214,7 @@ function ContactPage() {
                   <h4 className="text-xs text-muted-foreground font-medium">
                     Typical Response Time
                   </h4>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    Within 24 Hours
-                  </p>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">Within 24 Hours</p>
                 </div>
               </div>
 
@@ -206,9 +223,7 @@ function ContactPage() {
                   <Globe className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs text-muted-foreground font-medium">
-                    Socials & Source
-                  </h4>
+                  <h4 className="text-xs text-muted-foreground font-medium">Socials & Source</h4>
                   <div className="flex items-center gap-4 mt-2">
                     <a
                       href="https://github.com"
@@ -246,12 +261,10 @@ function ContactPage() {
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">
-                      Message Sent!
-                    </h2>
+                    <h2 className="text-2xl font-bold text-foreground">Message Sent!</h2>
                     <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                      Thank you for contacting CodeBoard. We have received your message
-                      and will get back to you as soon as possible.
+                      Thank you for contacting CodeBoard. We have received your message and will get
+                      back to you as soon as possible.
                     </p>
                   </div>
                   <div className="pt-4 flex justify-center gap-4">
@@ -272,15 +285,11 @@ function ContactPage() {
               ) : (
                 /* Form View */
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <h2 className="text-xl font-bold text-foreground">
-                    Send a Message
-                  </h2>
+                  <h2 className="text-xl font-bold text-foreground">Send a Message</h2>
 
                   {/* Name field */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-300">
-                      Your Name
-                    </label>
+                    <label className="text-xs font-medium text-slate-300">Your Name</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground pointer-events-none">
                         <User className="w-4 h-4" />
@@ -304,17 +313,13 @@ function ContactPage() {
                       />
                     </div>
                     {errors.name && (
-                      <p className="text-[11px] text-destructive font-medium mt-1">
-                        {errors.name}
-                      </p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{errors.name}</p>
                     )}
                   </div>
 
                   {/* Email field */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-300">
-                      Email Address
-                    </label>
+                    <label className="text-xs font-medium text-slate-300">Email Address</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground pointer-events-none">
                         <Mail className="w-4 h-4" />
@@ -346,9 +351,7 @@ function ContactPage() {
 
                   {/* Subject field */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-300">
-                      Subject
-                    </label>
+                    <label className="text-xs font-medium text-slate-300">Subject</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground pointer-events-none">
                         <BookOpen className="w-4 h-4" />
@@ -384,9 +387,7 @@ function ContactPage() {
 
                   {/* Message field */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-300">
-                      Message
-                    </label>
+                    <label className="text-xs font-medium text-slate-300">Message</label>
                     <textarea
                       rows={5}
                       value={message}
@@ -409,6 +410,29 @@ function ContactPage() {
                         {errors.message}
                       </p>
                     )}
+                    <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1 px-1">
+                      <span>Minimum 10 characters</span>
+                      <span
+                        className={message.length > 5000 ? "text-destructive font-semibold" : ""}
+                      >
+                        {message.length}/5000
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Honeypot spam protection (Page 5 checklist) */}
+                  <div className="hidden" aria-hidden="true">
+                    <label htmlFor="website" className="text-xs">
+                      Leave this blank
+                    </label>
+                    <input
+                      id="website"
+                      type="text"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
                   </div>
 
                   {/* Submit Button */}

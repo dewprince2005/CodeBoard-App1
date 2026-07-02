@@ -117,7 +117,7 @@ interface ChangedField {
 
 function getChangedFields(before: any, after: any): ChangedField[] {
   if (!before && !after) return [];
-  
+
   if (!before) {
     return Object.entries(after || {}).map(([key, val]) => ({
       key,
@@ -125,7 +125,7 @@ function getChangedFields(before: any, after: any): ChangedField[] {
       after: val,
     }));
   }
-  
+
   if (!after) {
     return Object.entries(before || {}).map(([key, val]) => ({
       key,
@@ -136,7 +136,7 @@ function getChangedFields(before: any, after: any): ChangedField[] {
 
   const changes: ChangedField[] = [];
   const allKeys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
-  
+
   for (const key of allKeys) {
     if (key === "updated_at" || key === "id" || key === "created_at") continue;
     const beforeVal = before[key];
@@ -153,20 +153,75 @@ const PAGE_SIZE = 10;
 
 /* ─────────────────── Permission matrix metadata ─────────────────── */
 
-const PERMISSION_META: Record<Permission, { label: string; description: string; category: string }> = {
-  view_dashboard:     { label: "View Dashboard",      description: "Access the personal dashboard page",               category: "General" },
-  view_tasks:         { label: "View Tasks",           description: "Access the tasks management page",                 category: "General" },
-  manage_own_tasks:   { label: "Manage Own Tasks",     description: "Create, edit, and delete own tasks",              category: "General" },
-  view_history:       { label: "View History",         description: "Access the sessions/history page",                category: "General" },
-  view_trash:         { label: "View Trash",           description: "Access the trash/soft-deleted items page",        category: "General" },
-  view_analytics:     { label: "View Analytics",      description: "View charts and analytics data",                  category: "Analytics" },
-  view_audit_logs:    { label: "View Audit Logs",      description: "Read the admin audit log trail",                  category: "Analytics" },
-  view_users:         { label: "View Users",           description: "See the user management table in admin",          category: "Admin" },
-  ban_users:          { label: "Ban/Unban Users",      description: "Toggle user banned status",                       category: "Admin" },
-  manage_all_tasks:   { label: "Manage All Tasks",     description: "Read and modify any user's tasks",                category: "Admin" },
-  access_admin_panel: { label: "Access Admin Panel",   description: "Navigate to the /admin route",                   category: "Admin" },
-  manage_roles:       { label: "Manage Roles",         description: "Change other users' roles",                       category: "Super Admin" },
-  manage_permissions: { label: "Manage Permissions",   description: "Edit the role permission matrix (this screen)",  category: "Super Admin" },
+const PERMISSION_META: Record<
+  Permission,
+  { label: string; description: string; category: string }
+> = {
+  view_dashboard: {
+    label: "View Dashboard",
+    description: "Access the personal dashboard page",
+    category: "General",
+  },
+  view_tasks: {
+    label: "View Tasks",
+    description: "Access the tasks management page",
+    category: "General",
+  },
+  manage_own_tasks: {
+    label: "Manage Own Tasks",
+    description: "Create, edit, and delete own tasks",
+    category: "General",
+  },
+  view_history: {
+    label: "View History",
+    description: "Access the sessions/history page",
+    category: "General",
+  },
+  view_trash: {
+    label: "View Trash",
+    description: "Access the trash/soft-deleted items page",
+    category: "General",
+  },
+  view_analytics: {
+    label: "View Analytics",
+    description: "View charts and analytics data",
+    category: "Analytics",
+  },
+  view_audit_logs: {
+    label: "View Audit Logs",
+    description: "Read the admin audit log trail",
+    category: "Analytics",
+  },
+  view_users: {
+    label: "View Users",
+    description: "See the user management table in admin",
+    category: "Admin",
+  },
+  ban_users: {
+    label: "Ban/Unban Users",
+    description: "Toggle user banned status",
+    category: "Admin",
+  },
+  manage_all_tasks: {
+    label: "Manage All Tasks",
+    description: "Read and modify any user's tasks",
+    category: "Admin",
+  },
+  access_admin_panel: {
+    label: "Access Admin Panel",
+    description: "Navigate to the /admin route",
+    category: "Admin",
+  },
+  manage_roles: {
+    label: "Manage Roles",
+    description: "Change other users' roles",
+    category: "Super Admin",
+  },
+  manage_permissions: {
+    label: "Manage Permissions",
+    description: "Edit the role permission matrix (this screen)",
+    category: "Super Admin",
+  },
 };
 
 const PERMISSION_CATEGORIES = ["General", "Analytics", "Admin", "Super Admin"] as const;
@@ -184,7 +239,9 @@ function AdminDashboard() {
 
   // Data
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-  const [allTasks, setAllTasks] = useState<{ id: string; created_at: string; is_completed: boolean }[]>([]);
+  const [allTasks, setAllTasks] = useState<
+    { id: string; created_at: string; is_completed: boolean }[]
+  >([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -211,12 +268,14 @@ function AdminDashboard() {
   const filteredAuditLogs = useMemo(() => {
     return auditLogs.filter((log) => {
       const q = auditSearchQuery.toLowerCase();
-      const matchesSearch = q === "" || 
+      const matchesSearch =
+        q === "" ||
         log.action.toLowerCase().includes(q) ||
         (log.actor_email || "").toLowerCase().includes(q) ||
         (log.target_email || "").toLowerCase().includes(q);
 
-      const matchesTarget = !selectedTargetEmail || 
+      const matchesTarget =
+        !selectedTargetEmail ||
         (log.target_email || "").toLowerCase() === selectedTargetEmail.toLowerCase() ||
         (log.target_id || "").toLowerCase() === selectedTargetEmail.toLowerCase();
 
@@ -238,11 +297,7 @@ function AdminDashboard() {
   useEffect(() => {
     if (!user) return;
     const fetchMyProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
       if (data) {
         const profile = data as unknown as Profile;
@@ -266,7 +321,10 @@ function AdminDashboard() {
     const fetchAll = async () => {
       const [profilesRes, tasksRes, logsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("tasks").select("id, created_at, is_completed").order("created_at", { ascending: false }),
+        supabase
+          .from("tasks")
+          .select("id, created_at, is_completed")
+          .order("created_at", { ascending: false }),
         supabase
           .from("audit_logs")
           .select("*")
@@ -287,21 +345,17 @@ function AdminDashboard() {
     if (!user || accessDenied) return;
     const channel = supabase
       .channel("admin-profiles")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setAllProfiles((prev) => [payload.new as unknown as Profile, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            const updated = payload.new as unknown as Profile;
-            setAllProfiles((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-          } else if (payload.eventType === "DELETE") {
-            const old = payload.old as { id: string };
-            setAllProfiles((prev) => prev.filter((p) => p.id !== old.id));
-          }
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          setAllProfiles((prev) => [payload.new as unknown as Profile, ...prev]);
+        } else if (payload.eventType === "UPDATE") {
+          const updated = payload.new as unknown as Profile;
+          setAllProfiles((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        } else if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setAllProfiles((prev) => prev.filter((p) => p.id !== old.id));
+        }
+      })
       .subscribe();
 
     return () => {
@@ -389,29 +443,26 @@ function AdminDashboard() {
       });
       forceRerender((n) => n + 1);
 
-      toast(
-        `${newBanState ? "Banned" : "Unbanned"} ${profile.email}`,
-        {
-          action: {
-            label: "Undo",
-            onClick: () => {
-              const undo = undoQueueRef.current.get(profile.id);
-              if (undo) {
-                clearTimeout(undo.timeout);
-                undoQueueRef.current.delete(profile.id);
-                setAllProfiles((prev) =>
-                  prev.map((p) =>
-                    p.id === profile.id ? { ...p, is_banned: undo.previousState } : p,
-                  ),
-                );
-                forceRerender((n) => n + 1);
-                toast.info("Action undone");
-              }
-            },
+      toast(`${newBanState ? "Banned" : "Unbanned"} ${profile.email}`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            const undo = undoQueueRef.current.get(profile.id);
+            if (undo) {
+              clearTimeout(undo.timeout);
+              undoQueueRef.current.delete(profile.id);
+              setAllProfiles((prev) =>
+                prev.map((p) =>
+                  p.id === profile.id ? { ...p, is_banned: undo.previousState } : p,
+                ),
+              );
+              forceRerender((n) => n + 1);
+              toast.info("Action undone");
+            }
           },
-          duration: 5000,
         },
-      );
+        duration: 5000,
+      });
     },
     [createAuditLog],
   );
@@ -501,9 +552,7 @@ function AdminDashboard() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
-        (p) =>
-          p.email.toLowerCase().includes(q) ||
-          (p.name && p.name.toLowerCase().includes(q)),
+        (p) => p.email.toLowerCase().includes(q) || (p.name && p.name.toLowerCase().includes(q)),
       );
     }
 
@@ -640,7 +689,9 @@ function AdminDashboard() {
               {item.active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
               )}
-              <item.icon className={`w-[18px] h-[18px] min-w-[18px] ${item.active ? "text-primary" : ""}`} />
+              <item.icon
+                className={`w-[18px] h-[18px] min-w-[18px] ${item.active ? "text-primary" : ""}`}
+              />
               {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
             </Link>
           ))}
@@ -764,16 +815,22 @@ function AdminDashboard() {
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {card.label}
                     </p>
-                    <p className="text-2xl sm:text-3xl font-bold mt-1.5 tracking-tight">{card.value}</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1.5 tracking-tight">
+                      {card.value}
+                    </p>
                     {"subtitle" in card && (
                       <p className="text-[10px] text-muted-foreground mt-1">{card.subtitle}</p>
                     )}
                   </div>
-                  <div className={`p-2.5 rounded-xl ${card.bg} group-hover:scale-110 transition-transform duration-300`}>
+                  <div
+                    className={`p-2.5 rounded-xl ${card.bg} group-hover:scale-110 transition-transform duration-300`}
+                  >
                     <card.icon className={`w-5 h-5 ${card.color}`} />
                   </div>
                 </div>
-                <div className={`absolute -bottom-6 -right-6 w-24 h-24 ${card.bg} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity`} />
+                <div
+                  className={`absolute -bottom-6 -right-6 w-24 h-24 ${card.bg} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity`}
+                />
               </div>
             ))}
           </div>
@@ -790,8 +847,18 @@ function AdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={usersChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
                     <Tooltip
                       contentStyle={{
                         background: "rgba(30,30,40,0.95)",
@@ -816,8 +883,18 @@ function AdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={tasksChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
                     <Tooltip
                       contentStyle={{
                         background: "rgba(30,30,40,0.95)",
@@ -967,10 +1044,7 @@ function AdminDashboard() {
                     {pagedProfiles.map((p) => {
                       const hasPendingUndo = undoQueueRef.current.has(p.id);
                       return (
-                        <tr
-                          key={p.id}
-                          className="hover:bg-accent/30 transition-colors"
-                        >
+                        <tr key={p.id} className="hover:bg-accent/30 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
                               <Avatar className="w-7 h-7 border border-border">
@@ -990,7 +1064,8 @@ function AdminDashboard() {
                             <PermissionGate
                               permission="manage_roles"
                               fallback={
-                                <span className={`
+                                <span
+                                  className={`
                                   text-[11px] font-medium px-2 py-1 rounded-md border
                                   ${
                                     p.role === "admin"
@@ -999,7 +1074,10 @@ function AdminDashboard() {
                                         ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
                                         : "bg-background/60 border-border text-muted-foreground"
                                   }
-                                `}>{p.role}</span>
+                                `}
+                                >
+                                  {p.role}
+                                </span>
                               }
                             >
                               <select
@@ -1113,7 +1191,10 @@ function AdminDashboard() {
                     })}
                     {pagedProfiles.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                        <td
+                          colSpan={6}
+                          className="px-4 py-10 text-center text-sm text-muted-foreground"
+                        >
                           No users match your filters
                         </td>
                       </tr>
@@ -1207,9 +1288,7 @@ function AdminDashboard() {
               {auditLogs.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-border rounded-lg">
                   <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    No audit events recorded yet
-                  </p>
+                  <p className="text-sm text-muted-foreground">No audit events recorded yet</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Actions like banning users or changing roles will appear here
                   </p>
@@ -1217,9 +1296,7 @@ function AdminDashboard() {
               ) : filteredAuditLogs.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-border rounded-lg">
                   <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    No matching audit events
-                  </p>
+                  <p className="text-sm text-muted-foreground">No matching audit events</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Try clearing the search or target filter to see more events
                   </p>
@@ -1265,27 +1342,37 @@ function AdminDashboard() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold">{log.action.replace(/_/g, " ")}</span>
+                              <span className="text-xs font-semibold">
+                                {log.action.replace(/_/g, " ")}
+                              </span>
                               <span className="text-[10px] text-muted-foreground">
                                 by {log.actor_email || "system"}
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              Target: <span className="text-foreground/80">{log.target_email || log.target_id || "—"}</span>
+                              Target:{" "}
+                              <span className="text-foreground/80">
+                                {log.target_email || log.target_id || "—"}
+                              </span>
                             </p>
-                            
+
                             {/* Inline Change Description */}
                             {changes.length > 0 ? (
                               <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px] text-muted-foreground">
                                 <span className="font-semibold text-foreground/70">Changes:</span>
                                 {changes.map((c) => (
-                                  <span key={c.key} className="bg-primary/5 border border-border/80 px-1.5 py-0.5 rounded text-[10px]">
-                                    {c.key} ({c.before !== undefined ? String(c.before) : "none"} → {c.after !== undefined ? String(c.after) : "none"})
+                                  <span
+                                    key={c.key}
+                                    className="bg-primary/5 border border-border/80 px-1.5 py-0.5 rounded text-[10px]"
+                                  >
+                                    {c.key} ({c.before !== undefined ? String(c.before) : "none"} →{" "}
+                                    {c.after !== undefined ? String(c.after) : "none"})
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              log.before_state && log.after_state && (
+                              log.before_state &&
+                              log.after_state && (
                                 <div className="text-[11px] text-muted-foreground italic mt-0.5">
                                   Metadata updated (no primary fields changed)
                                 </div>
@@ -1317,18 +1404,31 @@ function AdminDashboard() {
                             </div>
                             <div className="divide-y divide-border/40 max-h-[250px] overflow-y-auto pr-1">
                               {changes.map((change) => (
-                                <div key={change.key} className="grid grid-cols-3 gap-2 py-2 items-start font-mono text-[11px]">
-                                  <div className="font-semibold text-foreground/80 truncate pr-2 mt-0.5">{change.key}</div>
+                                <div
+                                  key={change.key}
+                                  className="grid grid-cols-3 gap-2 py-2 items-start font-mono text-[11px]"
+                                >
+                                  <div className="font-semibold text-foreground/80 truncate pr-2 mt-0.5">
+                                    {change.key}
+                                  </div>
                                   <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-1 rounded break-all whitespace-pre-wrap">
                                     {change.before !== undefined ? (
-                                      typeof change.before === "object" ? JSON.stringify(change.before, null, 2) : String(change.before)
+                                      typeof change.before === "object" ? (
+                                        JSON.stringify(change.before, null, 2)
+                                      ) : (
+                                        String(change.before)
+                                      )
                                     ) : (
                                       <span className="opacity-40 italic">none</span>
                                     )}
                                   </div>
                                   <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded break-all whitespace-pre-wrap">
                                     {change.after !== undefined ? (
-                                      typeof change.after === "object" ? JSON.stringify(change.after, null, 2) : String(change.after)
+                                      typeof change.after === "object" ? (
+                                        JSON.stringify(change.after, null, 2)
+                                      ) : (
+                                        String(change.after)
+                                      )
                                     ) : (
                                       <span className="opacity-40 italic">none</span>
                                     )}
@@ -1356,9 +1456,12 @@ function AdminDashboard() {
                     <Key className="w-5 h-5 text-violet-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">Role Permission Matrix</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Role Permission Matrix
+                    </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Control which features each role can access. Changes take effect immediately via real-time sync.
+                      Control which features each role can access. Changes take effect immediately
+                      via real-time sync.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 shrink-0">
@@ -1392,9 +1495,13 @@ function AdminDashboard() {
                   );
 
                   return (
-                    <div key={category} className="bg-card/60 backdrop-blur-sm border border-border rounded-xl overflow-hidden">
+                    <div
+                      key={category}
+                      className="bg-card/60 backdrop-blur-sm border border-border rounded-xl overflow-hidden"
+                    >
                       {/* Category header */}
-                      <div className={`px-5 py-3 border-b border-border/80 flex items-center gap-2
+                      <div
+                        className={`px-5 py-3 border-b border-border/80 flex items-center gap-2
                         ${
                           category === "Super Admin"
                             ? "bg-amber-500/5"
@@ -1404,8 +1511,10 @@ function AdminDashboard() {
                                 ? "bg-blue-500/5"
                                 : "bg-muted/20"
                         }
-                      `}>
-                        <span className={`text-xs font-bold uppercase tracking-widest
+                      `}
+                      >
+                        <span
+                          className={`text-xs font-bold uppercase tracking-widest
                           ${
                             category === "Super Admin"
                               ? "text-amber-400"
@@ -1415,16 +1524,28 @@ function AdminDashboard() {
                                   ? "text-blue-400"
                                   : "text-muted-foreground"
                           }
-                        `}>{category}</span>
+                        `}
+                        >
+                          {category}
+                        </span>
                       </div>
 
                       {/* Role column headers */}
                       <div className="grid grid-cols-[1fr_100px_100px_100px] gap-0 border-b border-border/60">
-                        <div className="px-5 py-2.5 text-xs font-medium text-muted-foreground">Permission</div>
+                        <div className="px-5 py-2.5 text-xs font-medium text-muted-foreground">
+                          Permission
+                        </div>
                         {ROLES.map((role) => (
-                          <div key={role} className="px-2 py-2.5 text-center text-xs font-semibold"
+                          <div
+                            key={role}
+                            className="px-2 py-2.5 text-center text-xs font-semibold"
                             style={{
-                              color: role === "admin" ? "#a78bfa" : role === "moderator" ? "#60a5fa" : "#9ca3af",
+                              color:
+                                role === "admin"
+                                  ? "#a78bfa"
+                                  : role === "moderator"
+                                    ? "#60a5fa"
+                                    : "#9ca3af",
                             }}
                           >
                             {role.charAt(0).toUpperCase() + role.slice(1)}
@@ -1436,10 +1557,10 @@ function AdminDashboard() {
                       {permsInCategory.map((perm, idx) => {
                         const meta = PERMISSION_META[perm];
                         const isProtected =
-                          perm === "manage_permissions" // always admin-only
-                          || perm === "view_dashboard"
-                          || perm === "view_tasks"
-                          || perm === "manage_own_tasks";
+                          perm === "manage_permissions" || // always admin-only
+                          perm === "view_dashboard" ||
+                          perm === "view_tasks" ||
+                          perm === "manage_own_tasks";
 
                         return (
                           <div
@@ -1453,12 +1574,16 @@ function AdminDashboard() {
                               <div className="flex items-start gap-2">
                                 <div>
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-medium text-foreground">{meta.label}</span>
+                                    <span className="text-xs font-medium text-foreground">
+                                      {meta.label}
+                                    </span>
                                     {isProtected && (
                                       <Lock className="w-3 h-3 text-amber-400 shrink-0" />
                                     )}
                                   </div>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">{meta.description}</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    {meta.description}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -1476,12 +1601,17 @@ function AdminDashboard() {
                               // Some base permissions are locked for all roles
                               const isLockedForRole =
                                 isProtected &&
-                                (perm === "view_dashboard" || perm === "view_tasks" || perm === "manage_own_tasks");
+                                (perm === "view_dashboard" ||
+                                  perm === "view_tasks" ||
+                                  perm === "manage_own_tasks");
 
                               const locked = isLockedOn || isLockedForRole;
 
                               return (
-                                <div key={role} className="flex items-center justify-center px-2 py-3.5">
+                                <div
+                                  key={role}
+                                  className="flex items-center justify-center px-2 py-3.5"
+                                >
                                   <button
                                     id={`perm-toggle-${role}-${perm}`}
                                     disabled={locked || isSaving}
@@ -1549,8 +1679,9 @@ function AdminDashboard() {
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 text-xs text-muted-foreground">
                   <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <span>
-                    Permission changes propagate instantly via real-time sync. Users already logged in will see changes
-                    on their next page navigation or within a few seconds via Supabase Realtime.
+                    Permission changes propagate instantly via real-time sync. Users already logged
+                    in will see changes on their next page navigation or within a few seconds via
+                    Supabase Realtime.
                   </span>
                 </div>
               </div>

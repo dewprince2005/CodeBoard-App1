@@ -54,12 +54,14 @@ function HistoryPage() {
           </div>
           <span className="font-semibold tracking-tight">CodeBoard</span>
         </Link>
-        
+
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Back
+          </Link>
           <div className="h-4 w-px bg-border" />
-          
+
           {authLoading ? (
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           ) : user ? (
@@ -75,11 +77,13 @@ function HistoryPage() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none text-foreground">My Account</p>
-                    <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
+                      {user.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={signOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
@@ -101,7 +105,9 @@ function HistoryPage() {
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-10">
         <h1 className="text-2xl font-bold">Saved sessions</h1>
-        <p className="text-muted-foreground text-sm mt-1">Read-only snapshots from past coding sessions.</p>
+        <p className="text-muted-foreground text-sm mt-1">
+          Read-only snapshots from past coding sessions.
+        </p>
 
         <div className="mt-8 space-y-2">
           {sessions === null && <div className="text-muted-foreground text-sm">Loading…</div>}
@@ -124,7 +130,9 @@ function HistoryPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground">{s.language}</span>
+                <span className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground">
+                  {s.language}
+                </span>
                 <span className="text-muted-foreground">{fmtDur(s.duration_sec)}</span>
               </div>
             </Link>
@@ -134,11 +142,17 @@ function HistoryPage() {
       <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border text-xs text-muted-foreground bg-background/20 mt-auto">
         <div>CodeBoard · Real-time collaborative coding</div>
         <div className="flex gap-4">
-          <Link to="/" className="hover:text-foreground transition underline-offset-4 hover:underline">
+          <Link
+            to="/"
+            className="hover:text-foreground transition underline-offset-4 hover:underline"
+          >
             Home
           </Link>
           <span>·</span>
-          <Link to="/contact" className="hover:text-foreground transition underline-offset-4 hover:underline">
+          <Link
+            to="/contact"
+            className="hover:text-foreground transition underline-offset-4 hover:underline"
+          >
             Contact Support
           </Link>
         </div>

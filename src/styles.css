@@ -62,9 +62,9 @@
   /* Dark theme — CodeBoard */
   --background: oklch(0.16 0.015 240);
   --foreground: oklch(0.97 0.005 240);
-  --card: oklch(0.20 0.018 240);
+  --card: oklch(0.2 0.018 240);
   --card-foreground: oklch(0.97 0.005 240);
-  --popover: oklch(0.20 0.018 240);
+  --popover: oklch(0.2 0.018 240);
   --popover-foreground: oklch(0.97 0.005 240);
   --primary: oklch(0.72 0.17 155);
   --primary-foreground: oklch(0.15 0.02 155);
@@ -90,7 +90,15 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease;
   }
 }

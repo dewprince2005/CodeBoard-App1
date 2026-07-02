@@ -37,7 +37,7 @@ function TaskManager() {
     await logActivity({ action: "click:sign_out" });
     await signOut();
   };
-  
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [loading, setLoading] = useState(true);
@@ -88,7 +88,7 @@ function TaskManager() {
       toast.error(`Error: ${error.message || "Failed to add task"}`);
       return;
     }
-    
+
     await logActivity({
       action: "click:add_task",
       after_state: { task_id: data.id, title: tempTitle },
@@ -100,9 +100,9 @@ function TaskManager() {
   // Update Task (Toggle Completion)
   const toggleTask = async (task: Task) => {
     const newStatus = !task.is_completed;
-    
+
     // Optimistic UI update
-    setTasks(tasks.map(t => t.id === task.id ? { ...t, is_completed: newStatus } : t));
+    setTasks(tasks.map((t) => (t.id === task.id ? { ...t, is_completed: newStatus } : t)));
 
     const { error } = await supabase
       .from("tasks")
@@ -112,7 +112,7 @@ function TaskManager() {
     if (error) {
       toast.error("Failed to update task");
       // Revert on error
-      setTasks(tasks.map(t => t.id === task.id ? { ...t, is_completed: !newStatus } : t));
+      setTasks(tasks.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t)));
     } else {
       await logActivity({
         action: "click:toggle_task",
@@ -138,7 +138,7 @@ function TaskManager() {
         after_state: { task_id: id },
       });
       // Optimistically remove from UI (soft‑deleted rows are filtered by RLS)
-      setTasks(tasks.filter(t => t.id !== id));
+      setTasks(tasks.filter((t) => t.id !== id));
       toast.success("Task moved to trash");
     }
   };
@@ -162,7 +162,7 @@ function TaskManager() {
             <span className="font-semibold text-lg tracking-tight">CodeBoard</span>
           </Link>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("toggle-command-menu"))}
@@ -190,7 +190,9 @@ function TaskManager() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none text-foreground">My Account</p>
-                    <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
+                      {user.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -213,7 +215,7 @@ function TaskManager() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
@@ -259,11 +261,14 @@ function TaskManager() {
               </p>
             ) : (
               tasks.map((task) => (
-                <div 
-                  key={task.id} 
+                <div
+                  key={task.id}
                   className="flex items-center justify-between p-3 border border-border rounded-lg bg-background hover:bg-accent/50 transition group"
                 >
-                  <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleTask(task)}>
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => toggleTask(task)}
+                  >
                     <button className="text-muted-foreground hover:text-primary transition focus:outline-none">
                       {task.is_completed ? (
                         <CheckCircle className="w-5 h-5 text-primary" />
@@ -271,12 +276,14 @@ function TaskManager() {
                         <Circle className="w-5 h-5" />
                       )}
                     </button>
-                    <span className={`text-sm ${task.is_completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    <span
+                      className={`text-sm ${task.is_completed ? "line-through text-muted-foreground" : "text-foreground"}`}
+                    >
                       {task.title}
                     </span>
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={() => deleteTask(task.id)}
                     className="text-destructive opacity-0 group-hover:opacity-100 transition p-2 hover:bg-destructive/10 rounded-md focus:outline-none focus:opacity-100"
                     title="Delete task"

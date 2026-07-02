@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -48,7 +41,7 @@ interface PermissionsContextType {
   updatePermission: (
     role: "user" | "moderator" | "admin",
     permission: Permission,
-    granted: boolean
+    granted: boolean,
   ) => Promise<void>;
   loading: boolean;
 }
@@ -73,7 +66,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const grantedPermissions: Set<Permission> = new Set(
     allRolePermissions
       .filter((rp) => rp.role === (profile?.role ?? "user") && rp.granted)
-      .map((rp) => rp.permission)
+      .map((rp) => rp.permission),
   );
 
   const can = useCallback(
@@ -82,7 +75,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       if (profile?.role === "admin") return true;
       return grantedPermissions.has(permission);
     },
-    [grantedPermissions, profile?.role]
+    [grantedPermissions, profile?.role],
   );
 
   // ─── Fetch all role permissions ───
@@ -120,20 +113,17 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "role_permissions" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setAllRolePermissions((prev) => [
-              ...prev,
-              payload.new as unknown as RolePermissionRow,
-            ]);
+            setAllRolePermissions((prev) => [...prev, payload.new as unknown as RolePermissionRow]);
           } else if (payload.eventType === "UPDATE") {
             const updated = payload.new as unknown as RolePermissionRow;
             setAllRolePermissions((prev) =>
-              prev.map((rp) => (rp.id === updated.id ? updated : rp))
+              prev.map((rp) => (rp.id === updated.id ? updated : rp)),
             );
           } else if (payload.eventType === "DELETE") {
             const old = payload.old as { id: string };
             setAllRolePermissions((prev) => prev.filter((rp) => rp.id !== old.id));
           }
-        }
+        },
       )
       .subscribe();
 
@@ -144,19 +134,11 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
   // ─── Update a permission (admin only) ───
   const updatePermission = useCallback(
-    async (
-      role: "user" | "moderator" | "admin",
-      permission: Permission,
-      granted: boolean
-    ) => {
+    async (role: "user" | "moderator" | "admin", permission: Permission, granted: boolean) => {
       // Guard: prevent admin from revoking their own manage_permissions
-      if (
-        role === "admin" &&
-        permission === "manage_permissions" &&
-        !granted
-      ) {
+      if (role === "admin" && permission === "manage_permissions" && !granted) {
         throw new Error(
-          "Cannot revoke manage_permissions from admin — this would lock everyone out."
+          "Cannot revoke manage_permissions from admin — this would lock everyone out.",
         );
       }
 
@@ -165,8 +147,8 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         prev.map((rp) =>
           rp.role === role && rp.permission === permission
             ? { ...rp, granted, updated_at: new Date().toISOString() }
-            : rp
-        )
+            : rp,
+        ),
       );
 
       const { error } = await (supabase as any)
@@ -183,15 +165,13 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         // Rollback optimistic update
         setAllRolePermissions((prev) =>
           prev.map((rp) =>
-            rp.role === role && rp.permission === permission
-              ? { ...rp, granted: !granted }
-              : rp
-          )
+            rp.role === role && rp.permission === permission ? { ...rp, granted: !granted } : rp,
+          ),
         );
         throw error;
       }
     },
-    [user]
+    [user],
   );
 
   return (

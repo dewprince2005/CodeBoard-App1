@@ -84,17 +84,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "CodeBoard Application" },
-      { name: "description", content: "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization." },
+      {
+        name: "description",
+        content:
+          "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "CodeBoard Application" },
-      { property: "og:description", content: "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization." },
+      {
+        property: "og:description",
+        content:
+          "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "CodeBoard Application" },
-      { name: "twitter:description", content: "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ef06b48-83b8-47d1-b387-a21e91a4f83a/id-preview-9d8004f0--08f934cb-9a06-49ea-8216-29fe21aac0a6.lovable.app-1781517209203.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ef06b48-83b8-47d1-b387-a21e91a4f83a/id-preview-9d8004f0--08f934cb-9a06-49ea-8216-29fe21aac0a6.lovable.app-1781517209203.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Codeboard Builder generates detailed prompts for creating codeboards, facilitating project planning and visualization.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ef06b48-83b8-47d1-b387-a21e91a4f83a/id-preview-9d8004f0--08f934cb-9a06-49ea-8216-29fe21aac0a6.lovable.app-1781517209203.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ef06b48-83b8-47d1-b387-a21e91a4f83a/id-preview-9d8004f0--08f934cb-9a06-49ea-8216-29fe21aac0a6.lovable.app-1781517209203.png",
+      },
     ],
     links: [
       {

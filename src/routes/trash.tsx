@@ -51,7 +51,7 @@ function TrashView() {
         action: "click:restore_task",
         after_state: { task_id: id },
       });
-      setTrash(trash.filter(t => t.id !== id));
+      setTrash(trash.filter((t) => t.id !== id));
       toast.success("Task restored");
     }
   };
@@ -67,7 +67,7 @@ function TrashView() {
         action: "click:purge_task",
         after_state: { task_id: id },
       });
-      setTrash(trash.filter(t => t.id !== id));
+      setTrash(trash.filter((t) => t.id !== id));
       toast.success("Task permanently removed");
     }
   };
@@ -99,8 +99,11 @@ function TrashView() {
           <p className="text-muted-foreground">Trash is empty.</p>
         ) : (
           <ul className="space-y-3">
-            {trash.map(task => (
-              <li key={task.id} className="flex justify-between items-center p-3 border rounded bg-card">
+            {trash.map((task) => (
+              <li
+                key={task.id}
+                className="flex justify-between items-center p-3 border rounded bg-card"
+              >
                 <span className="text-sm">{task.title}</span>
                 <div className="flex gap-2">
                   <button

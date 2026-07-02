@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  MessageSquare,
-  User,
-  Mail,
-  BookOpen,
-  Send,
-  CheckCircle,
-  X
-} from "lucide-react";
+import { MessageSquare, User, Mail, BookOpen, Send, CheckCircle, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -70,7 +62,7 @@ export function SupportModal() {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       toast.success("Thank you! Your message has been sent successfully.");
       setSubmitted(true);
-      
+
       // Auto-close dialog after 1.5 seconds on successful submission
       setTimeout(() => {
         setOpen(false);
@@ -94,13 +86,16 @@ export function SupportModal() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-      setOpen(val);
-      if (!val) {
-        // Reset form on close
-        resetForm();
-      }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        setOpen(val);
+        if (!val) {
+          // Reset form on close
+          resetForm();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <button
           className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground hover:opacity-90 shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer border border-primary/20 group"
@@ -156,7 +151,9 @@ export function SupportModal() {
                     placeholder="John Doe"
                     disabled={loading}
                     className={`w-full bg-background border ${
-                      errors.name ? "border-destructive/80 focus:ring-destructive/20" : "border-border focus:border-primary/80 focus:ring-primary/25"
+                      errors.name
+                        ? "border-destructive/80 focus:ring-destructive/20"
+                        : "border-border focus:border-primary/80 focus:ring-primary/25"
                     } rounded-lg pl-9 pr-3 py-2 text-sm text-foreground outline-none transition-all focus:ring-2`}
                   />
                 </div>
@@ -182,7 +179,9 @@ export function SupportModal() {
                     placeholder="you@example.com"
                     disabled={loading}
                     className={`w-full bg-background border ${
-                      errors.email ? "border-destructive/80 focus:ring-destructive/20" : "border-border focus:border-primary/80 focus:ring-primary/25"
+                      errors.email
+                        ? "border-destructive/80 focus:ring-destructive/20"
+                        : "border-border focus:border-primary/80 focus:ring-primary/25"
                     } rounded-lg pl-9 pr-3 py-2 text-sm text-foreground outline-none transition-all focus:ring-2`}
                   />
                 </div>
@@ -210,7 +209,12 @@ export function SupportModal() {
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -229,7 +233,9 @@ export function SupportModal() {
                   placeholder="Describe your issue or feedback..."
                   disabled={loading}
                   className={`w-full bg-background border ${
-                    errors.message ? "border-destructive/80 focus:ring-destructive/20" : "border-border focus:border-primary/80 focus:ring-primary/25"
+                    errors.message
+                      ? "border-destructive/80 focus:ring-destructive/20"
+                      : "border-border focus:border-primary/80 focus:ring-primary/25"
                   } rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-all focus:ring-2 resize-none`}
                 />
                 {errors.message && (

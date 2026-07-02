@@ -260,11 +260,16 @@ function UserDashboard() {
       .channel("dashboard-audit-logs")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "audit_logs", filter: `actor_id=eq.${user.id}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "audit_logs",
+          filter: `actor_id=eq.${user.id}`,
+        },
         (payload) => {
           const newLog = payload.new;
           setActivityFeed((prev) => [mapLogToActivity(newLog), ...prev].slice(0, 20));
-        }
+        },
       )
       .subscribe();
 
@@ -299,7 +304,7 @@ function UserDashboard() {
                   return prev.map((t) => (t.id === updated.id ? updated : t));
                 } else {
                   return [updated, ...prev].sort(
-                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
                   );
                 }
               });
@@ -353,7 +358,9 @@ function UserDashboard() {
 
     if (error) {
       toast.error("Failed to update task");
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t)));
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, is_completed: !newStatus } : t)),
+      );
     } else {
       await logActivity({
         action: "click:toggle_task",
@@ -425,7 +432,11 @@ function UserDashboard() {
     } else {
       await logActivity({
         action: "click:save_profile",
-        after_state: { name: profileForm.name.trim(), bio: profileForm.bio.trim(), location: profileForm.location.trim() },
+        after_state: {
+          name: profileForm.name.trim(),
+          bio: profileForm.bio.trim(),
+          location: profileForm.location.trim(),
+        },
       });
       setProfile((prev) =>
         prev
@@ -561,7 +572,9 @@ function UserDashboard() {
               {item.active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
               )}
-              <item.icon className={`w-[18px] h-[18px] min-w-[18px] ${item.active ? "text-primary" : ""}`} />
+              <item.icon
+                className={`w-[18px] h-[18px] min-w-[18px] ${item.active ? "text-primary" : ""}`}
+              />
               {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
             </Link>
           ))}
@@ -580,9 +593,7 @@ function UserDashboard() {
 
         {/* User footer */}
         <div className="border-t border-border/50 p-3">
-          <div
-            className={`flex items-center gap-3 ${sidebarOpen ? "px-2" : "justify-center"}`}
-          >
+          <div className={`flex items-center gap-3 ${sidebarOpen ? "px-2" : "justify-center"}`}>
             <Avatar className="w-8 h-8 border border-border">
               <AvatarFallback className="bg-primary/20 text-primary font-semibold uppercase text-xs">
                 {profile?.name?.[0] || user?.email?.[0] || "U"}
@@ -695,14 +706,20 @@ function UserDashboard() {
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {card.label}
                     </p>
-                    <p className="text-2xl sm:text-3xl font-bold mt-1.5 tracking-tight">{card.value}</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1.5 tracking-tight">
+                      {card.value}
+                    </p>
                   </div>
-                  <div className={`p-2.5 rounded-xl ${card.bg} group-hover:scale-110 transition-transform duration-300`}>
+                  <div
+                    className={`p-2.5 rounded-xl ${card.bg} group-hover:scale-110 transition-transform duration-300`}
+                  >
                     <card.icon className={`w-5 h-5 ${card.color}`} />
                   </div>
                 </div>
                 {/* Ambient glow */}
-                <div className={`absolute -bottom-6 -right-6 w-24 h-24 ${card.bg} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity`} />
+                <div
+                  className={`absolute -bottom-6 -right-6 w-24 h-24 ${card.bg} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity`}
+                />
               </div>
             ))}
           </div>
@@ -718,7 +735,9 @@ function UserDashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Analytics Locked</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Upgrade your role to view task analytics charts.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Upgrade your role to view task analytics charts.
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/50 bg-muted/10 p-10 text-center">
@@ -727,7 +746,9 @@ function UserDashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Status Chart Locked</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Analytics require elevated permissions.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Analytics require elevated permissions.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -750,8 +771,18 @@ function UserDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: "#9ca3af" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "#9ca3af" }}
+                        axisLine={false}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
                       <Tooltip
                         contentStyle={{
                           background: "rgba(30,30,40,0.95)",
@@ -921,7 +952,9 @@ function UserDashboard() {
                         ) : (
                           <span
                             className={`text-sm truncate ${
-                              task.is_completed ? "line-through text-muted-foreground" : "text-foreground"
+                              task.is_completed
+                                ? "line-through text-muted-foreground"
+                                : "text-foreground"
                             }`}
                           >
                             {task.title}
@@ -1026,7 +1059,9 @@ function UserDashboard() {
                         </label>
                         <input
                           value={profileForm.location}
-                          onChange={(e) => setProfileForm((p) => ({ ...p, location: e.target.value }))}
+                          onChange={(e) =>
+                            setProfileForm((p) => ({ ...p, location: e.target.value }))
+                          }
                           className="w-full bg-background/60 border border-border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/40 mt-0.5"
                         />
                       </div>

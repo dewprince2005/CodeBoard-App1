@@ -40,10 +40,14 @@ export const Route = createFileRoute("/room/$code")({
 
 const langExt = (l: string) => {
   switch (l) {
-    case "python": return python();
-    case "java": return java();
-    case "cpp": return cpp();
-    default: return javascript();
+    case "python":
+      return python();
+    case "java":
+      return java();
+    case "cpp":
+      return cpp();
+    default:
+      return javascript();
   }
 };
 
@@ -51,9 +55,9 @@ const formatTime = (totalSeconds: number): string => {
   const hrs = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
-  
+
   const pad = (n: number) => String(n).padStart(2, "0");
-  
+
   if (hrs > 0) {
     return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
   }
@@ -149,7 +153,9 @@ function RoomPage() {
       setValue(data.code ?? "");
       setTimeout(() => (remoteApply.current = false), 0);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [code]);
 
   // Realtime channel
@@ -202,12 +208,18 @@ function RoomPage() {
     const now = Date.now();
     if (now - lastSent.current > 1500) {
       lastSent.current = now;
-      supabase.from("rooms").update({ code: v, updated_at: new Date().toISOString() }).eq("room_code", code);
+      supabase
+        .from("rooms")
+        .update({ code: v, updated_at: new Date().toISOString() })
+        .eq("room_code", code);
     } else {
       if (pendingSave.current) clearTimeout(pendingSave.current);
       pendingSave.current = setTimeout(() => {
         lastSent.current = Date.now();
-        supabase.from("rooms").update({ code: v, updated_at: new Date().toISOString() }).eq("room_code", code);
+        supabase
+          .from("rooms")
+          .update({ code: v, updated_at: new Date().toISOString() })
+          .eq("room_code", code);
       }, 1500);
     }
   };
@@ -271,7 +283,9 @@ function RoomPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Room not found</h1>
-          <p className="text-muted-foreground mt-2">The room code <span className="font-mono">{code}</span> doesn't exist.</p>
+          <p className="text-muted-foreground mt-2">
+            The room code <span className="font-mono">{code}</span> doesn't exist.
+          </p>
           <button
             onClick={async () => {
               await logActivity({ action: "click:go_home_room_not_found" });
@@ -324,8 +338,11 @@ function RoomPage() {
           <div className="hidden sm:flex items-center gap-2 text-xs bg-card border border-border rounded-full px-3 py-1.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                status === "connected" ? "bg-primary animate-pulse" :
-                status === "connecting" ? "bg-yellow-500" : "bg-destructive"
+                status === "connected"
+                  ? "bg-primary animate-pulse"
+                  : status === "connecting"
+                    ? "bg-yellow-500"
+                    : "bg-destructive"
               }`}
             />
             <span className="capitalize">{status}</span>
@@ -369,7 +386,9 @@ function RoomPage() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none text-foreground">My Account</p>
-                    <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
+                      {user.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -380,7 +399,7 @@ function RoomPage() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={handleSignOut}
                   className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
@@ -425,7 +444,8 @@ function RoomPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Quit Collaboration Room?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to quit this collaborative room? Unsaved progress on this coding session will not be saved.
+              Are you sure you want to quit this collaborative room? Unsaved progress on this coding
+              session will not be saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

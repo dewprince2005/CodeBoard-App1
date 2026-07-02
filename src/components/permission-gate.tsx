@@ -51,7 +51,9 @@ export function PermissionGate({
       <div>
         <p className="text-sm font-medium text-foreground">Access Restricted</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Your role doesn't have the <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{permission}</code> permission.
+          Your role doesn't have the{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{permission}</code>{" "}
+          permission.
         </p>
       </div>
     </div>
