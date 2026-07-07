@@ -17,6 +17,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SupportModal } from "@/components/support-modal";
 import { CommandMenu } from "@/components/command-menu";
+import { ChatbotFloating } from "@/components/chatbot-floating";
 
 function NotFoundComponent() {
   return (
@@ -155,6 +156,7 @@ function RootComponent() {
             <Outlet />
             <SupportModal />
             <CommandMenu />
+            <ChatbotFloating />
             <Toaster closeButton richColors />
           </ThemeProvider>
         </PermissionProvider>
