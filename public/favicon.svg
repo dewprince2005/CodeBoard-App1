@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rect -->
+  <rect width="90" height="90" x="5" y="5" rx="22" fill="url(#grad)" />
+  <!-- Drop shadow for brackets -->
+  <path d="M32 38 L18 50 L32 62 M68 38 L82 50 L68 62 M44 68 L56 32" stroke="#064e3b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.3" />
+  <!-- White code brackets and slash -->
+  <path d="M32 35 L18 47 L32 59 M68 35 L82 47 L68 59 M44 65 L56 29" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>
